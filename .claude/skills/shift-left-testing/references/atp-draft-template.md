@@ -245,14 +245,14 @@ If Partial / No, list issues:
 
 ## Differences from sprint-testing's full ATP
 
-| Section | Sprint-testing's `test-analysis.md` (full ATP) | Shift-Left's `shift-left-refinement.md` (DRAFT) |
+| Section | Sprint-testing's synced `acceptance-test-plan.md` (full ATP) | Shift-Left's `shift-left-refinement.md` (DRAFT) |
 |---------|----------------------------------------------|-------------------------------------------------|
 | Phase 4 parametrization tables | YES | NO |
 | Phase 4 per-outline test-data JSON | YES | NO |
 | Phase 4 numbered test steps | YES | NO (titles + 1-line precondition + 1-line expected only) |
 | Phase 5 test-data generation strategy | YES | NO |
 | Phase 5 Faker recipes | YES | NO |
-| TC creation in Xray (Modality A) | YES (Phase 6) | NO — TCs created in Stage 4 `/test-documentation` |
+| TC creation in Xray (Modality jira-xray) | YES (Phase 6) | NO — TCs created in Stage 4 `/test-documentation` |
 | Commit on `test/{KEY}/...` branch | YES | NO — Jira is canonical |
 | Bug variant section | YES | NO — bugs out of scope |
 | Status flag at top | "Test Analysis — Ready for Execution" | "Refined — Awaiting PO Estimation" |
@@ -262,9 +262,9 @@ When `/sprint-testing` later runs Stage 1 on a Story with `shift-left-reviewed` 
 1. Validates Refined ACs still match the (possibly updated) Story description.
 2. Skips Phases 1-3 of `acceptance-test-planning.md` (already done).
 3. Adds the deferred sections: parametrization, test-data JSON, Faker recipes, numbered steps.
-4. Writes `test-analysis.md` as a SUPERSET of `shift-left-refinement.md`.
+4. Writes the full ATP to the Jira `acceptance_test_plan` field (or fallback comment) as a SUPERSET of `shift-left-refinement.md`, then syncs it down to `acceptance-test-plan.md`.
 
-Both files coexist in the PBI folder. `shift-left-refinement.md` is the historical record of pre-sprint analysis; `test-analysis.md` is the in-sprint authoritative test plan.
+Both files coexist in the PBI folder. `shift-left-refinement.md` is the historical record of pre-sprint analysis; the synced `acceptance-test-plan.md` is the in-sprint authoritative test plan (Jira source of truth).
 
 ---
 

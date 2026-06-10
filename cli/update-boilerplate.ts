@@ -7,7 +7,7 @@
  * rollback flag) live here; everything else lives in core.
  */
 
-import type { Component, ReportSink, UpdaterConfig } from './lib/updater-types';
+import type { Component, ReportSink, RunSummary, UpdaterConfig } from './lib/updater-types';
 import { execSync, spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -16,6 +16,7 @@ import * as path from 'node:path';
 import pc from 'picocolors';
 import * as tui from './lib/tui';
 import { cleanupTempDir, detectGitVersion, gitVersionMeetsMin, runUpdate } from './lib/updater-core';
+import { parseDotEnvExampleKeys, requiredNow, VAR_MANIFEST } from './lib/variables-manifest.ts';
 
 // --- CONFIGURATION ---
 const CLI_VERSION = '7.0';
@@ -23,9 +24,10 @@ const TEMPLATE_REPO = 'upex-galaxy/agentic-qa-boilerplate';
 const TEMP_DIR = path.join(os.tmpdir(), 'kata-boilerplate-update');
 const VERSION_FILE = '.template/boilerplate.lock.json';
 
-const TOOLING_FILES = ['.editorconfig', '.prettierrc', '.prettierignore'];
+const TOOLING_FILES = ['.editorconfig', '.prettierrc', '.gitattributes'];
 const AGENTS_DOCS_FILES = ['README.md'];
 const CLAUDE_CONFIG_FILES = ['settings.json'];
+const ENV_TEMPLATE_FILES = ['.env.example'];
 
 /**
  * Canonical skills location (Claude Code) and portability symlink target.
@@ -37,7 +39,6 @@ const COMPONENTS: Component[] = [
   { name: 'skills', type: 'directory', paths: ['.claude/skills'] },
   { name: 'commands', type: 'directory', paths: ['.claude/commands'] },
   { name: 'scripts', type: 'directory', paths: ['scripts'] },
-  { name: 'templates', type: 'directory', paths: ['templates'] },
   { name: 'docs', type: 'directory', paths: ['docs'] },
   { name: 'cli', type: 'directory', paths: ['cli'] },
   { name: 'vscode', type: 'directory', paths: ['.vscode'] },
@@ -45,6 +46,10 @@ const COMPONENTS: Component[] = [
   { name: 'agents-docs', type: 'file-list', paths: ['.agents'], files: AGENTS_DOCS_FILES },
   { name: 'claude-config', type: 'file-list', paths: ['.claude'], files: CLAUDE_CONFIG_FILES },
   { name: 'tooling', type: 'file-list', paths: ['.'], files: TOOLING_FILES },
+  // `.env.example` carries NO secrets (placeholder values only) and fast-forwards
+  // safely. Shipping it is the prerequisite for env-var drift detection — the
+  // afterApply hook can only diff against an `.env.example` we have shipped.
+  { name: 'env-template', type: 'file-list', paths: ['.'], files: ENV_TEMPLATE_FILES },
 ];
 
 // --- ARG PARSE ---
@@ -56,6 +61,7 @@ interface ParsedArgs {
   dryRun: boolean
   rollback: boolean
   auto: boolean
+  force: boolean
 }
 
 function parseArgs(args: string[]): ParsedArgs {
@@ -67,6 +73,7 @@ function parseArgs(args: string[]): ParsedArgs {
     dryRun: false,
     rollback: false,
     auto: false,
+    force: false,
   };
   const valid = new Set(COMPONENTS.map(c => c.name).concat(['all', 'help', 'rollback']));
   for (let i = 0; i < args.length; i++) {
@@ -75,6 +82,7 @@ function parseArgs(args: string[]): ParsedArgs {
     else if (a === '--auto') { out.auto = true; }
     else if (a === '--dry-run') { out.dryRun = true; }
     else if (a === '--rollback' || a === 'rollback') { out.rollback = true; }
+    else if (a === '--force') { out.force = true; }
     else if (a === '--list') { out.listSkills = true; }
     else if (a === '--skill' || a === '--skills') {
       const next = args[i + 1];
@@ -90,7 +98,7 @@ function parseArgs(args: string[]): ParsedArgs {
       i++;
     }
     else if (valid.has(a)) { out.commands.push(a); }
-    else if (!a.startsWith('-')) { tui.log.warn(`Comando desconocido: ${a}`); }
+    else if (!a.startsWith('-')) { tui.log.error(`Comando/componente desconocido: ${a}. Usa --help para ver los validos.`); process.exit(1); }
   }
   return out;
 }
@@ -106,7 +114,12 @@ COMPONENTES: ${COMPONENTS.map(c => c.name).join(', ')}
 ATAJOS:      all, rollback, help
 
 FLAGS:
-  --auto                 Modo no-interactivo (CI)
+  --auto                 Modo no-interactivo: sincroniza TODO el boilerplate
+                         (copia archivos nuevos + sobreescribe divergencias con
+                         la versión upstream). NO borra archivos que upstream
+                         eliminó. El boilerplate es canónico (match 1:1).
+  --force                Como --auto pero TAMBIÉN borra archivos que el upstream
+                         eliminó. Hay backup + --rollback de respaldo.
   --dry-run              Preview, sin escribir
   --rollback             Restaura backup mas reciente
   --skill a,b,c          Sincroniza solo los skills indicados (subcomando skills)
@@ -119,7 +132,8 @@ EJEMPLOS:
   bun up skills --skill a,b,c            # Skills especificos
   bun up --list                          # Listar skills disponibles
   bun up commands docs                   # Multiples componentes
-  bun up --auto                          # CI mode
+  bun up --auto                          # CI mode (seguro, preserva lo tuyo)
+  bun up --force                         # Forzar todo del upstream (sin preguntar)
   bun up --dry-run                       # Preview
   bun up --rollback                      # Restaurar backup
 `;
@@ -176,6 +190,138 @@ function rollbackFromBackup(): void {
     tui.log.error(`Rollback fallido: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
+}
+
+// --- ENV-VAR DRIFT DETECTION (afterApply hook) ---
+//
+// After a sync, the upstream clone still sits in `tempDir` (the updater cleans
+// it up AFTER afterApply runs). We diff the keys the upstream `.env.example`
+// declares against what the target already has locally (`.env` + local
+// `.env.example`) and surface any upstream-added keys the target is missing.
+//
+// Per handoff §3.5 + D3: this only PRINTS and OFFERS to run
+// `bun run setup --variables` — it NEVER auto-runs the remote push, and in
+// non-interactive / CI mode it just prints the warning (no prompt, no action).
+
+/** Read the `KEY=` keys a local env file declares (missing file → []). */
+function localEnvKeys(filePath: string): string[] {
+  if (!fs.existsSync(filePath)) { return []; }
+  try {
+    return parseDotEnvExampleKeys(filePath);
+  }
+  catch {
+    return [];
+  }
+}
+
+/**
+ * Build the `afterApply` hook that detects env-var drift.
+ *
+ * Captures `tempDir` (where the upstream clone lives during the run), the
+ * `sink` (for `confirm`), and `auto` (CI gate) from the outer scope — the
+ * core's hook signature only passes the `RunSummary`.
+ */
+function makeEnvDriftHook(
+  tempDir: string,
+  sink: ReportSink,
+  auto: boolean,
+): (summary: RunSummary) => Promise<void> {
+  return async (_summary: RunSummary): Promise<void> => {
+    const upstreamExample = path.join(tempDir, '.env.example');
+    if (!fs.existsSync(upstreamExample)) { return; }
+
+    let upstreamKeys: string[];
+    try {
+      upstreamKeys = parseDotEnvExampleKeys(upstreamExample);
+    }
+    catch {
+      return; // unreadable upstream template — nothing to diff against.
+    }
+    if (upstreamKeys.length === 0) { return; }
+
+    // What the target already knows: live `.env` keys + local `.env.example`.
+    const localKeys = new Set<string>([
+      ...localEnvKeys(path.join(process.cwd(), '.env')),
+      ...localEnvKeys(path.join(process.cwd(), '.env.example')),
+    ]);
+
+    const newKeys = upstreamKeys.filter(k => !localKeys.has(k));
+    if (newKeys.length === 0) { return; }
+
+    // Flag which of the new keys the manifest marks required RIGHT NOW (given
+    // the target's current env), so the warning can lead with those.
+    const envSnapshot = process.env as Record<string, string>;
+    const requiredNew = newKeys.filter((k) => {
+      const spec = VAR_MANIFEST.find(s => s.name === k);
+      return spec ? requiredNow(spec, envSnapshot) : false;
+    });
+
+    sink.warn(`El upstream agregó ${newKeys.length} variable(s) de entorno que tu .env no tiene:`);
+    for (const k of newKeys) {
+      const isReq = requiredNew.includes(k);
+      sink.warn(`  - ${k}${isReq ? pc.yellow(' (requerida)') : ''}`);
+    }
+
+    // CI / non-interactive: print only — never prompt, never touch remote (D3).
+    if (auto) {
+      sink.step('Modo --auto: ejecuta `bun run setup --variables` manualmente para poblarlas.');
+      return;
+    }
+
+    // Interactive: OFFER (does not auto-run remote — the --variables flow stays
+    // self-gated; this only launches its local+offered-remote pipeline).
+    const proceed = await sink.confirm(
+      'Ejecutar `bun run setup --variables` ahora para poblar las variables faltantes?',
+      false,
+    );
+    if (!proceed) {
+      sink.step('Omitido. Puedes ejecutar `bun run setup --variables` cuando quieras.');
+      return;
+    }
+
+    sink.step('Lanzando `bun run setup --variables`…');
+    const res = spawnSync('bun', ['run', 'setup', '--variables'], { stdio: 'inherit' });
+    if (res.status !== 0) {
+      sink.warn('`bun run setup --variables` terminó con error o fue cancelado.');
+    }
+  };
+}
+
+// --- SKILLS REGISTRY REGEN (afterApply hook) ---
+//
+// REGISTRY.md is excluded from the sync (it is a generated, per-repo file). When
+// the `skills` component changed this run, regenerate it locally so it reflects
+// the repo's ACTUAL skill set — newly synced framework skills PLUS any local
+// community skills (resend, playwright-*) the boilerplate never ships. Without
+// this, the next `skills:registry:check` (pre-push) would flag the registry as
+// stale after a sync that added or changed skills.
+function makeSkillsRegistryHook(
+  sink: ReportSink,
+): (summary: RunSummary) => Promise<void> {
+  return async (summary: RunSummary): Promise<void> => {
+    const skillsTouched = summary.applied.some(a => a.entry.path.startsWith('.claude/skills/'));
+    if (!skillsTouched) { return; }
+    sink.step('Regenerando `.claude/skills/REGISTRY.md` (skills cambiaron)…');
+    const res = spawnSync('bun', ['run', 'skills:registry'], { stdio: 'inherit' });
+    if (res.status !== 0) {
+      sink.warn('No se pudo regenerar REGISTRY.md. Ejecuta `bun run skills:registry` manualmente.');
+    }
+  };
+}
+
+/** Run several afterApply hooks in sequence (each isolated; one failure warns, never aborts). */
+function composeHooks(
+  sink: ReportSink,
+  ...hooks: Array<(summary: RunSummary) => Promise<void>>
+): (summary: RunSummary) => Promise<void> {
+  return async (summary: RunSummary): Promise<void> => {
+    for (const hook of hooks) {
+      try { await hook(summary); }
+      catch (err) {
+        sink.warn(`afterApply hook falló: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  };
 }
 
 // --- SKILLS RESOLVER (used by --list short-circuit and runtime hook) ---
@@ -309,6 +455,21 @@ function buildSink(): ReportSink {
       return abortOnCancel<string[]>(r);
     },
 
+    resolvePackageJsonKey: async (file, section, key, drift) => {
+      const body = `=== Tu versión (local) ===\n${drift.localValue}\n\n=== Versión del boilerplate (upstream) ===\n${drift.upstreamValue}`;
+      tui.note(body, `${file} → ${section}.${key}`);
+      const r = await tui.select({
+        message: `${section}.${key} difiere — ¿qué hacemos?`,
+        options: [
+          { value: 'mine', label: 'Mantener la mía (predeterminado)' },
+          { value: 'theirs', label: 'Actualizar a la del boilerplate' },
+          { value: 'skip', label: 'Decidir después (preguntar de nuevo)' },
+        ],
+        initialValue: 'mine',
+      });
+      return abortOnCancel<string>(r) as 'theirs' | 'mine' | 'skip';
+    },
+
     resolveDiverged: async (entry, diff) => {
       const body = `=== Cambios upstream ===\n${diff.templateDiff.trim() || '(sin diff)'}\n\n=== Tus cambios locales ===\n${diff.localDiff.trim() || '(sin diff)'}`;
       tui.note(body, `Divergencia en ${entry.path}`);
@@ -378,7 +539,7 @@ function buildSink(): ReportSink {
         if (abortOnCancel<boolean>(openExternal)) {
           const tmp = path.join(os.tmpdir(), `upex-diff-${process.pid}-${Date.now()}.txt`);
           fs.writeFileSync(tmp, plain);
-          const editor = process.env.EDITOR || process.env.VISUAL || 'less';
+          const editor = process.env.EDITOR || process.env.VISUAL || (process.platform === 'win32' ? 'notepad' : 'less');
           try { spawnSync(editor, [tmp], { stdio: 'inherit' }); }
           catch { tui.log.warn(`No se pudo abrir ${editor}. Contenido en: ${tmp}`); return; }
           finally {
@@ -419,6 +580,10 @@ async function main(): Promise<void> {
     components = skillsSelected;
   }
 
+  // Single sink instance — shared by runUpdate AND the env-drift afterApply hook
+  // (the hook uses `sink.confirm` to offer `setup --variables`).
+  const sink = buildSink();
+
   const cfg: UpdaterConfig = {
     templateRepo: TEMPLATE_REPO,
     cliVersion: CLI_VERSION,
@@ -434,20 +599,42 @@ async function main(): Promise<void> {
       '.agents/project.yaml',
       '.agents/jira-fields.json',
       '.agents/jira-workflows.json',
+      '.agents/jira-link-types.json',
       '.agents/jira-required.yaml',
+    ],
+    // Files inside a synced component that must NEVER be overwritten by the sync:
+    //  - REGISTRY.md: generated, per-repo (rebuilt by makeSkillsRegistryHook).
+    //  - scripts/api-login.ts: project-adapted auth CLI (override points for the
+    //    project's auth flow). Shipped once via the create-* scaffold tarball,
+    //    then owned by the project — re-syncing would clobber the adaptation.
+    excludePaths: [
+      path.join(SKILLS_CANONICAL_DIR, 'REGISTRY.md').replace(/\\/g, '/'),
+      'scripts/api-login.ts',
     ],
     selfUpdateComponent: 'cli',
     hooks: {
       skillsResolver: resolveTemplateSkills,
+      // afterApply runs while the upstream clone still sits in TEMP_DIR (cleanup
+      // happens after). Regenerate the skills registry first (reflects the new
+      // skill set), then run env-var drift detection. Dry-run skips both —
+      // nothing was applied, so there is nothing to regenerate or act on.
+      afterApply: parsed.dryRun
+        ? undefined
+        : composeHooks(
+            sink,
+            makeSkillsRegistryHook(sink),
+            makeEnvDriftHook(TEMP_DIR, sink, parsed.auto),
+          ),
     },
   };
 
   tui.intro(tui.headline(`UPEX QA Boilerplate Updater v${CLI_VERSION}`));
 
-  const summary = await runUpdate(cfg, buildSink(), {
+  const summary = await runUpdate(cfg, sink, {
     auto: parsed.auto,
     dryRun: parsed.dryRun,
     rollback: false,
+    force: parsed.force,
   });
 
   process.stdout.write(`${tui.successBox([
