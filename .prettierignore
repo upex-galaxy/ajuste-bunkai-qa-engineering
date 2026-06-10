@@ -64,3 +64,15 @@ docs/mcp/
 # .template/installer.state.json is regenerated between every installer step,
 # so prettier --check races against the writes. Skip the whole dir.
 .template/
+
+# ===== Synced from boilerplate v7.0 =====
+# ----- 2026-06-10 (sync) -----
+api/openapi*
+api/.openapi-config.json
+.claude/settings.local.json
+.auth/
+.playwright/
+!.playwright/cli.config.json
+.playwright-mcp/
+.backups/
+.claude/worktrees/

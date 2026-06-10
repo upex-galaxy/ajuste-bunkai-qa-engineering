@@ -46,13 +46,27 @@ This skill is compliant with the doctrine in `CLAUDE.md` §"Orchestration Mode (
 | Phase 0 — Resolve TMS modality                         | inline     | orchestrator only; existing 4-step probe — unchanged                                                                                                        |
 | Phase 1 — Analyze scope                                | Single     | inline — planning lives in the orchestrator (anti-pattern to delegate)                                                                                      |
 | Phase 2 — ROI / Candidate-Manual-Deferred verdict      | Single     | inline — decisions live in the orchestrator                                                                                                                 |
-| Phase 3 — TMS TC creation (N > 10 TCs)                 | Parallel   | M subagents, chunks of ~5-10 TCs per agent; cap = 10 to avoid Jira/Xray rate limits; each subagent loads `/xray-cli` (Modality A) or `/acli` (Modality B)  |
+| Phase 3 — TMS TC creation (N > 10 TCs)                 | Parallel   | M subagents, chunks of ~5-10 TCs per agent; cap = 10 to avoid Jira/Xray rate limits; each subagent loads `/xray-cli` (Modality jira-xray) or `/acli` (Modality jira-native)  |
 | Phase 3 — TMS TC creation (N ≤ 10 TCs)                 | Single     | inline — dispatch overhead is not justified for small batches                                                                                               |
 | Phase 3 — Traceability linking (US <-> ATP <-> ATR <-> TCs) | Single     | inline — requires aggregated state of all created entities                                                                                                  |
 | Phase 3 — Final report / coverage matrix               | Single     | inline — synthesis lives in the orchestrator                                                                                                                |
 
 - **Concurrency cap = 10 subagents** for Parallel TC creation. Jira and Xray APIs both rate-limit at ~10 writes/sec sustained; fanning out wider triggers 429 responses. If a module has >100 TCs, batches per subagent must be larger than 10 each (cap is on subagent count, not chunk size).
 - **Error protocol**: On any subagent failure: STOP, report the partial success state (which TCs landed, which failed, with their issue keys / errors), present retry / skip / abort options. Do NOT auto-fix nor auto-rollback. See `.claude/skills/agentic-qa-core/references/orchestration-doctrine.md`.
+
+---
+
+## Readiness Preflight Gate (MANDATORY — runs before Phase -1)
+
+> Full doctrine: `agentic-qa-core/references/preflight-gate.md`. Runs FIRST, before the resume check and before the TMS-modality gate. Two laws: (1) **args-as-answers** — the scope (module / ticket / bug / ad-hoc) and any stated modality are provided args; ask only the gaps. (2) **probe, don't assume**. Surface gaps + REDs as ONE `AskUserQuestion` checklist; self-fix with approval + explanation; STOP on any blocking RED. This skill documents already-validated behavior in the TMS — it does NOT execute against a live system, so its gate centers on TMS write capability. **Generic baseline** (env resolution, test-user creds, secret/restart handling, the two laws, output contract) is inherited from the reference §3.1 — not repeated here. Below is only this skill's **specific capability delta**.
+
+| Capability | Need | Why here |
+|---|---|---|
+| Issue-tracker (`[ISSUE_TRACKER_TOOL]`) | REQUIRED | TC / ATP / ATR creation, linking, transitions. Load `/acli`; validate via `bun run jira:check`. |
+| TMS modality + `[TMS_TOOL]` | REQUIRED | The whole Phase 0 gate. jira-xray → `/xray-cli` loaded + `XRAY_*` creds set + Xray issue types present. jira-native → `/acli` covers it. Resolve before Phase 1; ask only if all auto-checks fail. |
+| Source repos readable | OPTIONAL | Phase 1 source-code validation reads backend/frontend code, not a running env — no live-env or DB/API/browser probe needed. |
+
+Active env, test-user creds, DBHub, OpenAPI/`API_TOKEN`, Playwright, `resend` and `kata-manifest.json` (an automation-only concern owned by `/test-automation`) are **N/A** — documentation never hits a live system nor writes test code. After the gate clears (all REQUIRED GREEN), continue to Phase -1 below.
 
 ---
 
@@ -80,23 +94,23 @@ Every project runs in one of two modalities. Resolve it **before** Phase 1. The 
 
 ```
 Does this project have Xray installed and licensed on Jira?
-  A. Yes -> Modality A: Xray on Jira
-  B. No  -> Modality B: Jira-native (no Xray)
+  A. Yes -> Modality jira-xray
+  B. No  -> Modality jira-native (no Xray)
 ```
 
 ### How to resolve it without asking (in order)
 
-1. Check `CLAUDE.md` for `{{TMS_CLI}}`. Value `bun xray` (or any Xray CLI) -> **Modality A**. Value is unset, `acli`-only, or `{{TMS_CLI}}` matches `{{ISSUE_TRACKER_CLI}}` -> **Modality B**.
+1. Check `CLAUDE.md` for `{{TMS_CLI}}`. Value `bun xray` (or any Xray CLI) -> **Modality jira-xray**. Value is unset, `acli`-only, or `{{TMS_CLI}}` matches `{{ISSUE_TRACKER_CLI}}` -> **Modality jira-native**.
 2. If `CLAUDE.md` is ambiguous, look for a `.context/master-test-plan.md` line such as `TMS: Xray on Jira` or `TMS: Jira native`.
-3. If still ambiguous, list existing issue types in the project via `[ISSUE_TRACKER_TOOL] List issue types`. If the project exposes `Test Plan` / `Test Execution` / `Test Set` / `Pre-Condition`, it is **Modality A**. Otherwise **Modality B**.
+3. If still ambiguous, list existing issue types in the project via `[ISSUE_TRACKER_TOOL] List issue types`. If the project exposes `Test Plan` / `Test Execution` / `Test Set` / `Pre-Condition`, it is **Modality jira-xray**. Otherwise **Modality jira-native**.
 4. **Only if all three checks fail**, ask the user the question above. Do NOT ask by default — autoresolve first.
 
 ### What changes per modality
 
-| Artifact | Modality A (Xray on Jira) | Modality B (Jira-native) |
+| Artifact | Modality jira-xray | Modality jira-native |
 |----------|---------------------------|---------------------------|
-| **ATP** (Acceptance Test Plan) | Xray `Test Plan` issue, named `Test Plan: {{PROJECT_KEY}}-{n}`, linked to US | Story `{{jira.acceptance_test_plan}}` + comment mirror on the Story. No separate issue. |
-| **ATR** (Acceptance Test Results) | Xray `Test Execution` issue with Test Runs per TC, Environment, Begin/End Date, named `Test Results: {{PROJECT_KEY}}-{n}` | Story `{{jira.acceptance_test_results}}` + comment mirror on the Story. |
+| **ATP** (Acceptance Test Plan) | Xray `Test Plan` issue, named `Test Plan: {{PROJECT_KEY}}-{n}`, linked to US | Story `{{jira.acceptance_test_plan}}` field (source of truth); falls back to a `## Acceptance Test Plan (ATP)` comment only when the field is absent. No separate issue. |
+| **ATR** (Acceptance Test Results) | Xray `Test Execution` issue with Test Runs per TC, Environment, Begin/End Date, named `Test Results: {{PROJECT_KEY}}-{n}` | Story `{{jira.acceptance_test_results}}` field (source of truth); falls back to a `## Acceptance Test Results (ATR)` comment only when the field is absent. |
 | **TC** (Test Case) | Xray `Test` issue (type Manual / Cucumber / Generic) | Jira-native `Test` issue type (or `Task` with custom type), Description carries the full TC template |
 | **Test Set / Precondition / Test Plan** | First-class Xray issue types | Not available — use labels + Epic grouping |
 | **Result sync** | CI imports JUnit/Cucumber via `[TMS_TOOL] Import Results` -> Test Runs auto-update | Custom script updates Test Status field on each TC + comment with build context |
@@ -107,8 +121,8 @@ Does this project have Xray installed and licensed on Jira?
 Once resolved, save the modality into `.session/test-documentation/<scope>/plan.md` §Inputs (canonical session record) and ALSO mirror to `test-session-memory.md` for the ticket (if one exists, for per-ticket sub-agent context). Treat as sticky: do not re-resolve mid-session. If you detect drift (e.g. `[TMS_TOOL]` suddenly fails), stop and ask the user before re-resolving.
 
 Reference implementations:
-- Modality A concepts + Xray REST/GraphQL/CLI -> `references/xray-platform.md`
-- Modality B project setup (Test issue type, Screen Scheme, custom fields) -> `references/jira-setup.md`
+- Modality jira-xray concepts + Xray REST/GraphQL/CLI -> `references/xray-platform.md`
+- Modality jira-native project setup (Test issue type, Screen Scheme, custom fields) -> `references/jira-setup.md`
 - Both modes side-by-side (field mapping, workflow, Description template) -> `references/jira-test-management.md`
 
 ---
@@ -126,7 +140,9 @@ Pick the scope based on the input, not the output. All four scopes share the sam
 
 If the user gives you a story ID, use ticket-driven. If they give you a bug ID, use bug-driven. If they give you a module name or a session output, use module- or ad-hoc accordingly.
 
-After scope confirmation, **write `.session/test-documentation/<scope>/plan.md`** per `agentic-qa-core/references/session-management.md` §6 — Goal (scope + TMS modality + expected TC count), Inputs (PBI references, ATP source, prior bugs), Approach (per-phase dispatch table above), Phase breakdown (Phase 1 Analyze → Phase 2 Prioritize → Phase 3 TC creation with chunk count → Traceability → Final report), Risks, Verification checklist (all TCs created with traceability + coverage matrix written), Cross-references (`.context/PBI/{module}/{story}/tests/*.md` per-TC files + `.context/reports/` coverage matrix). Append `## Phase -1 — Session resume check — <ts>` with `status: completed`, `next: Phase 0 — Resolve TMS modality` to `progress.md`.
+**Scope handoff to `/test-automation`.** The `Candidate` TCs produced here flow downstream to `/test-automation`, which **re-scopes** them into its own 3 planning scopes: `module-driven → Module (Macro)`, `ticket-driven → Ticket (Medium)`, `bug-driven → Regression-driven (Micro)`. `ad-hoc / exploratory` Candidates have no 1:1 automation scope — they enter under whichever fits (a module batch, or regression-driven for a single TC). `Manual` and `Deferred` verdicts are terminal and never reach automation.
+
+After scope confirmation, **write `.session/test-documentation/<scope>/plan.md`** per `agentic-qa-core/references/session-management.md` §6 — Goal (scope + TMS modality + expected TC count), Inputs (PBI references, ATP source, prior bugs), Approach (per-phase dispatch table above), Phase breakdown (Phase 1 Analyze → Phase 2 Prioritize → Phase 3 TC creation with chunk count → Traceability → Final report), Risks, Verification checklist (all TCs created with traceability + coverage matrix written), Cross-references (`.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/test-cases/*.md` per-TC files + `.context/reports/` coverage matrix). Append `## Phase -1 — Session resume check — <ts>` with `status: completed`, `next: Phase 0 — Resolve TMS modality` to `progress.md`.
 
 ---
 
@@ -139,7 +155,8 @@ After scope confirmation, **write `.session/test-documentation/<scope>/plan.md`*
 | User Story / Epic | Description, ACs, comments, linked issues | Scenario identification, risk signals |
 | Closed bugs linked to the story | Summary, root cause, fix area | Prior-bug prioritization rule |
 | Exploratory session notes | Validated scenarios, observations | Reuse nomenclature already used |
-| Existing ATP (if present) | `.context/PBI/.../acceptance-test-plan.md` or TMS ATP | Scenarios may already exist — do not reinvent |
+| Existing ATP (if present) — **modality-aware** (see §Phase 0) | **jira-native**: Story field `{{jira.acceptance_test_plan}}` → synced `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/acceptance-test-plan.md` (read-only Jira cache — sync via `bun run jira:sync-issues get <STORY> --include-comments`). **jira-xray**: Test Plan issue `description` → `bun run jira:sync-issues get <ATP_KEY>` → `test-plans/TESTPLAN-<KEY>-<slug>.md`; per-TC run state via `[TMS_TOOL]` (xray-cli) | Scenarios may already exist — do not reinvent |
+| Existing ATR (if present) — **modality-aware** (see §Phase 0) | **jira-native**: Story field `{{jira.acceptance_test_results}}` → synced `acceptance-test-results.md` (same `jira:sync-issues get <STORY> --include-comments`). **jira-xray**: Test Execution issue `description` → `bun run jira:sync-issues get <ATR_KEY>` → `test-executions/TESTEXEC-<KEY>-<slug>.md` (sync supports these types); per-TC run results via `[TMS_TOOL]` (xray-cli) | Prior run results — do not re-execute what is already recorded |
 | Implementation plan / source code | Actual files, APIs, test IDs | Validate design matches implementation before documenting |
 
 ### Separate real scenarios from cross-cutting characteristics
@@ -294,7 +311,7 @@ Creating a TC before the ATP and ATR exist leaves orphaned references. Fix any b
 
 Always populate Description with the full TC template (Related Story, Priority, ROI, Prior bugs, Test Design gherkin/steps, Variables table, Implementation Code table, Architecture, Available Test IDs, Preconditions, Expected Results). Read `references/jira-test-management.md` when choosing between Xray and native Jira, or when the Description must be filled.
 
-> **Dispatch**: Use the dispatch defined in §Subagent Dispatch Strategy: **Parallel** when N > 10 TCs (cap = 10 subagents), inline otherwise. The full briefings for both Modality A (Xray via `/xray-cli`) and Modality B (Jira-native via `/acli`) live in `references/tms-architecture.md` §"Parallel TC creation". The sharding rule, error protocol, and aggregation contract are documented there. The serial flow below is the canonical procedure each subagent runs internally for its assigned chunk.
+> **Dispatch**: Use the dispatch defined in §Subagent Dispatch Strategy: **Parallel** when N > 10 TCs (cap = 10 subagents), inline otherwise. The full briefings for both Modality jira-xray (via `/xray-cli`) and Modality jira-native (via `/acli`) live in `references/tms-architecture.md` §"Parallel TC creation". The sharding rule, error protocol, and aggregation contract are documented there. The serial flow below is the canonical procedure each subagent runs internally for its assigned chunk.
 
 ### High-quality Gherkin (for Candidates)
 
@@ -368,13 +385,13 @@ Full reference in `references/tms-conventions.md` §Labels.
 
 ### Local cache (Claude Code convention)
 
-After TMS creation, write one markdown file per TC into `.context/PBI/{module}/{story}/tests/{TC-ID}-{slug}.md`. Template in `references/jira-test-management.md` §Local cache. This prevents re-reading the TMS in future sessions and gives `test-automation` an immediate handoff.
+After TMS creation, write one markdown file per TC into `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/test-cases/{TC-ID}-{slug}.md`. Template in `references/jira-test-management.md` §Local cache. This per-TC cache is NON-Jira (hand-authored) — it is NOT a synced Jira mirror, so author it locally. The directory is `test-cases/` (NOT `tests/` — the sync script owns the top-level `.context/PBI/tests/` tree for Jira Test issues). This prevents re-reading the TMS in future sessions and gives `test-automation` an immediate handoff.
 
 ### Per-phase progress + Archive
 
 After each Phase 1 / Phase 2 / Phase 3 step completes (including each Parallel TC-creation chunk in Phase 3), the orchestrator appends a phase entry to `.session/test-documentation/<scope>/progress.md` per `agentic-qa-core/references/session-management.md` §7. Per-chunk entries are critical: a 60-TC batch dispatched as 6 chunks of 10 produces 6 separate `## Phase 3.chunk-<N>` entries, each recording which TC IDs landed. Resume reads completed chunks and dispatches only the missing ones.
 
-After Phase 3 Final report + coverage matrix land, the orchestrator runs Archive per `agentic-qa-core/references/session-management.md` §8: moves `.session/test-documentation/<scope>/` to `.session/.archive/<YYYY-MM-DD>-test-documentation-<scope>/` (two-file dir preserved) and calls `mem_session_summary` with the archive path. The canonical per-TC `.context/PBI/{module}/{story}/tests/*.md` files + coverage matrix in `.context/reports/` stay in place as committed deliverables.
+After Phase 3 Final report + coverage matrix land, the orchestrator runs Archive per `agentic-qa-core/references/session-management.md` §8: moves `.session/test-documentation/<scope>/` to `.session/.archive/<YYYY-MM-DD>-test-documentation-<scope>/` (two-file dir preserved) and calls `mem_session_summary` with the archive path. The canonical per-TC `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/test-cases/*.md` files + coverage matrix in `.context/reports/` stay in place as committed deliverables.
 
 On Phase 3 partial failure (some chunks 429-rate-limited, some succeeded), archive does NOT run — `progress.md` retains the per-chunk state so resume picks up the missing ones.
 
@@ -404,6 +421,7 @@ On Phase 3 partial failure (some chunks 429-rate-limited, some succeeded), archi
 - **Fixing broken traceability (TC not linked to US/ATP/ATR, name wrong)** -> use the procedure in the Linking Order section above, backed by `references/tms-architecture.md` §Traceability Rules.
 - **Deciding if a bug deserves a regression TC** -> apply Phase 0 question 2 (prior bug = prioritize), then ROI; bug-driven scope defaults to Candidate.
 - **TMS operations** -> load `/xray-cli` skill for concrete CLI syntax. Issue-tracker operations resolve via `[ISSUE_TRACKER_TOOL]` per CLAUDE.md Tool Resolution.
+  - **Reads vs writes split** (per `agentic-qa-core/references/acli-integration.md` §"Reads vs writes"): detailed READS (custom fields, ACs, ATP/ATR, description, comments, linked bugs) -> `bun run jira:sync-issues get <KEY> --include-comments` (or `jql "<query>"`), then read the synced `.md` — NEVER `acli workitem view` for custom fields. TMS WRITES (create Test / Test Plan / Test Execution / link / transition / comment / import) + traceability/List-Tests link-graph reads -> `[TMS_TOOL]` (acli/xray). Trivial metadata + list/search lookups (issue types, key lists) -> acli `view`/`search`.
 - **Session contract (Phase -1 resume, plan.md/progress.md schemas, per-chunk checkpoint for Parallel TC creation, archive policy, Engram per-phase checkpoint)** -> read `../agentic-qa-core/references/session-management.md`. This skill is a producer of `session/test-documentation/<scope>/...` topic keys.
 
 ---
@@ -412,13 +430,14 @@ On Phase 3 partial failure (some chunks 429-rate-limited, some succeeded), archi
 
 Canonical reading order for any AI starting cold on a test-documentation workflow. Read in order; stop earlier when the scope is narrow enough that later inputs add no signal.
 
-1. `.context/test-management-system.md` — TMS modality configuration (A vs B), Regression Epic, label taxonomy.
-2. `.context/PBI/{module}/{TICKET-ID}-*/` — ticket-local context: existing ATP, ATR, session notes, validated scenarios.
-3. `.agents/jira-required.yaml` — canonical slug catalog for fields, statuses, link types.
-4. `.agents/jira-fields.json` — slug → numeric custom-field-ID mapping for ADF / API calls.
-5. `.agents/jira-workflows.json` — `test_case` workflow + transition catalog (Draft → In Design → Ready → …).
-6. `.context/master-test-plan.md` — regression Epic, prioritization rubric, what to test and why.
-7. The Story's AC + spec via `[ISSUE_TRACKER_TOOL]` — current Description, AC, comments, linked bugs.
+> **TMS modality** (A: Xray vs B: Jira-native) is resolved live by Phase 0 from `.agents/project.yaml` `testing.tms_cli` and sticky in `plan.md`. **Regression Epic** is resolved live by Phase 3 §Preflight via JQL (`type = Epic AND labels = "test-repository"`). **Label taxonomy** defaults are hardcoded in `references/tms-conventions.md`. No external TMS config file is read.
+
+1. `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/` — ticket-local context (module = Epic, 1:1). The detailed read materializes the **FULL synced Story folder**; read **ALL of it** — every per-field `.md` (`story.md`, `acceptance-criteria.md`, scope, business rules, etc.) **plus `comments.md`** — not just one field, so ACs / scope / business rules / comment context are never omitted. Existing ATP and ATR are **modality-aware reads** (see §Phase 0): **jira-native** → Story-folder `acceptance-test-plan.md` / `acceptance-test-results.md` (synced from Story fields `{{jira.acceptance_test_plan}}` / `{{jira.acceptance_test_results}}`); **jira-xray** → `test-plans/TESTPLAN-<KEY>-<slug>.md` (Test Plan `description`) / `test-executions/TESTEXEC-<KEY>-<slug>.md` (Test Execution `description`, sync supports these types), with per-TC run results via `[TMS_TOOL]` (xray-cli).
+2. `.agents/jira-required.yaml` — canonical slug catalog for fields, statuses, link types.
+3. `.agents/jira-fields.json` — slug → numeric custom-field-ID mapping for ADF / API calls.
+4. `.agents/jira-workflows.json` — `test_case` workflow + transition catalog (Draft → In Design → Ready → …).
+5. `.context/master-test-plan.md` — regression Epic, prioritization rubric, what to test and why.
+6. The Story's AC + spec via `bun run jira:sync-issues get <STORY> --include-comments`, then read **every** synced `.md` in the materialized folder — current Description, AC, scope, business rules, `comments.md`, linked bugs — not just one field. NEVER use `[ISSUE_TRACKER_TOOL]` `view` (returns null for custom fields). **TC note**: a TC body = the `Test` issue `description` (synced both modalities via `bun run jira:sync-issues get <TEST-KEY>`); the Xray Gherkin / Test-Steps plugin field is NOT synced — it mirrors the description, so read the synced TC `.md` for Gherkin/steps.
 
 ---
 
@@ -428,7 +447,7 @@ Canonical reading order for any AI starting cold on a test-documentation workflo
 - **D2.** NEVER ship a Test Plan without traceability to a Story / Epic. Orphan ATPs are unauditable — link before the first TC lands.
 - **D3.** NEVER over-detail Test Case steps. The spec / KATA ATC is the source of truth; the TC step list is a pointer, not a duplicate.
 - **D4.** NEVER skip ROI scoring. Every TC ends with a Candidate / Manual / Deferred verdict before handoff to `/test-automation`.
-- **D5.** NEVER mix Modality A (Xray) and Modality B (Jira-native) inside the same Story's ATP. Modality is one-shot per project and Phase 0 resolves it.
+- **D5.** NEVER mix Modality jira-xray and Modality jira-native inside the same Story's ATP. Modality is one-shot per project and Phase 0 resolves it.
 - **D6.** NEVER fabricate Jira field IDs. Run `bun run jira:sync-fields --force` and resolve via `{{jira.<slug>}}` — hardcoded `customfield_NNNNN` drifts silently.
 - **D7.** NEVER link an ATR to multiple ATPs. The relationship is 1:1 (one plan, one results record); multiple ATRs per ATP is fine, the inverse is not.
 - **D8.** NEVER reopen a Closed bug to attach a regression TC. File a new TC and link to the bug via `tests / is tested by` — bug history stays immutable.
@@ -456,7 +475,7 @@ Resolve `[TMS_TOOL]` / `[ISSUE_TRACKER_TOOL]` via `CLAUDE.md` §Tool Resolution.
   labels: test-repository, regression, qa
 ```
 
-### Modality A — Xray on Jira
+### Modality jira-xray
 
 > **Prerequisite**: Load `/xray-cli` and `/acli` skills before executing commands below.
 
@@ -468,7 +487,7 @@ Resolve `[TMS_TOOL]` / `[ISSUE_TRACKER_TOOL]` via `CLAUDE.md` §Tool Resolution.
   tests: []                       # filled as TCs are created
 
 [ISSUE_TRACKER_TOOL] Link Issues:
-  linkType: "tests"
+  linkType: {{jira.link_types.test.name}}   # Story is tested by Test Plan (resolve by slug + verify direction per agentic-qa-core/references/traceability-linking.md §2/§4)
   outward: {ATP_KEY}
   inward:  {STORY_KEY}
 
@@ -481,7 +500,7 @@ Resolve `[TMS_TOOL]` / `[ISSUE_TRACKER_TOOL]` via `CLAUDE.md` §Tool Resolution.
   tests: []                       # filled at Stage 3 or via CI import
 
 [ISSUE_TRACKER_TOOL] Link Issues:
-  linkType: "is tested by"
+  linkType: {{jira.link_types.test.name}}   # Story is tested by Test Execution
   outward: {ATR_KEY}
   inward:  {STORY_KEY}
 
@@ -505,7 +524,7 @@ Resolve `[TMS_TOOL]` / `[ISSUE_TRACKER_TOOL]` via `CLAUDE.md` §Tool Resolution.
   execution: {ATR_KEY}
   tests: [{TEST_KEY}]
 [ISSUE_TRACKER_TOOL] Link Issues:
-  linkType: "is tested by"
+  linkType: {{jira.link_types.test.name}}   # Story is tested by Test
   outward: {TEST_KEY}
   inward:  {STORY_KEY}
 
@@ -516,35 +535,37 @@ Resolve `[TMS_TOOL]` / `[ISSUE_TRACKER_TOOL]` via `CLAUDE.md` §Tool Resolution.
   execution: {ATR_KEY}
 ```
 
-### Modality B — Jira-native (no Xray)
+### Modality jira-native (no Xray)
 
 > **Prerequisite**: Load `/acli` skill before executing commands below.
 
 ```
-# ATP = Story customfield + comment mirror. NO separate issue.
+# ATP = Story customfield (source of truth). NO separate issue.
 [ISSUE_TRACKER_TOOL] Update Issue:
   issue: {STORY_KEY}
   fields:
     {{jira.acceptance_test_plan}}: {Test Analysis body}
   labels: +shift-left-reviewed
 
+# FALLBACK only if {{jira.acceptance_test_plan}} is absent in .agents/jira-fields.json:
 [ISSUE_TRACKER_TOOL] Add Comment:
   issue: {STORY_KEY}
   body: |
-    === Acceptance Test Plan ({{PROJECT_KEY}}-{n}) ===
-    {Test Analysis body — byte-for-byte mirror of {{jira.acceptance_test_plan}}}
+    ## Acceptance Test Plan (ATP)
+    {Test Analysis body}
 
-# ATR = Story customfield + comment mirror. NO separate issue.
+# ATR = Story customfield (source of truth). NO separate issue.
 [ISSUE_TRACKER_TOOL] Update Issue:
   issue: {STORY_KEY}
   fields:
     {{jira.acceptance_test_results}}: {Test Report body}
 
+# FALLBACK only if {{jira.acceptance_test_results}} is absent in .agents/jira-fields.json:
 [ISSUE_TRACKER_TOOL] Add Comment:
   issue: {STORY_KEY}
   body: |
-    === Acceptance Test Results ({{PROJECT_KEY}}-{n}) ===
-    {Test Report body — byte-for-byte mirror of {{jira.acceptance_test_results}}}
+    ## Acceptance Test Results (ATR)
+    {Test Report body}
 
 # TC = Jira-native Test issue (custom issue type configured per jira-setup.md)
 [ISSUE_TRACKER_TOOL] Create Issue:
@@ -562,7 +583,7 @@ Resolve `[TMS_TOOL]` / `[ISSUE_TRACKER_TOOL]` via `CLAUDE.md` §Tool Resolution.
     Test Status: Draft                          # custom field per jira-setup.md
 
 [ISSUE_TRACKER_TOOL] Link Issues:
-  linkType: "is tested by"
+  linkType: {{jira.link_types.test.name}}   # Story is tested by Test
   outward: {TEST_KEY}
   inward:  {STORY_KEY}
 

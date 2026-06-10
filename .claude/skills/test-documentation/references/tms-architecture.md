@@ -21,18 +21,18 @@ Every QA-tested user story produces four artifact types. The model is tool-agnos
 
 The entity model is tool-agnostic, but the **container** each entity lives in changes with the TMS modality. Resolve modality via `test-documentation/SKILL.md` §Phase 0 before using these mappings.
 
-| Entity | Modality A — Xray on Jira | Modality B — Jira-native (no Xray) |
+| Entity | Modality jira-xray | Modality jira-native (no Xray) |
 |--------|---------------------------|-------------------------------------|
 | **US** | Jira `Story` | Jira `Story` |
-| **ATP** | Xray `Test Plan` issue. Named `Test Plan: {{PROJECT_KEY}}-{n}`. Linked to the Story via "tests". | Story's `{{jira.acceptance_test_plan}}` + comment mirror on the same Story. **No separate issue created.** |
-| **ATR** | Xray `Test Execution` issue. Named `Test Results: {{PROJECT_KEY}}-{n}`. Holds `Test Runs` per TC, plus Environment, Begin/End Date. Gets populated by CI import. | Story's `{{jira.acceptance_test_results}}` + comment mirror on the same Story. **No separate issue.** CI updates Test Status field on each TC directly. |
+| **ATP** | Xray `Test Plan` issue. Named `Test Plan: {{PROJECT_KEY}}-{n}`. Linked to the Story via "tests". | Story's `{{jira.acceptance_test_plan}}` field (source of truth); falls back to a `## Acceptance Test Plan (ATP)` comment only when the field is absent. **No separate issue created.** |
+| **ATR** | Xray `Test Execution` issue. Named `Test Results: {{PROJECT_KEY}}-{n}`. Holds `Test Runs` per TC, plus Environment, Begin/End Date. Gets populated by CI import. | Story's `{{jira.acceptance_test_results}}` field (source of truth); falls back to a `## Acceptance Test Results (ATR)` comment only when the field is absent. **No separate issue.** CI updates Test Status field on each TC directly. |
 | **TC** | Xray `Test` issue (type Manual / Cucumber / Generic) | Jira-native `Test` custom issue type (set up per `references/jira-setup.md`) or `Task` with a `Test Type` custom field. |
 | **Test Set / Precondition / Test Plan hierarchy** | First-class Xray issue types | Not available — group by labels + Regression Epic. |
 
 Key consequences:
 
-- In **Modality B**, there is no separate "Test Plan issue" to link to — all ATP/ATR content lives on the Story itself. Traceability from a TC back to the plan/results walks via the "is tested by" link to the Story, then reads the Story's custom fields.
-- In **Modality A**, the `Test Plan` and `Test Execution` issues are real, queryable, filterable by JQL, and (critically) the Test Execution is the target of `[TMS_TOOL] Import Results` at the end of every CI run.
+- In **Modality jira-native**, there is no separate "Test Plan issue" to link to — all ATP/ATR content lives on the Story itself. Traceability from a TC back to the plan/results walks via the "is tested by" link to the Story, then reads the Story's custom fields.
+- In **Modality jira-xray**, the `Test Plan` and `Test Execution` issues are real, queryable, filterable by JQL, and (critically) the Test Execution is the target of `[TMS_TOOL] Import Results` at the end of every CI run.
 - The naming convention (`Test Plan: {{PROJECT_KEY}}-{n}` / `Test Results: {{PROJECT_KEY}}-{n}`) stays the same in both modalities — in B it identifies the section header in the Story comment, not an issue key.
 
 ---
@@ -193,7 +193,7 @@ Step 4. For each TC (as Stage 4 progresses):
 
 ### Pseudocode — full sequence
 
-> **Prerequisite**: Load `/xray-cli` skill (Modality A) — in Modality B these `[TMS_TOOL]` calls fall through to `[ISSUE_TRACKER_TOOL]`, so load `/acli` instead. See §9 for the per-modality split.
+> **Prerequisite**: Load `/xray-cli` skill (Modality jira-xray) — in Modality jira-native these `[TMS_TOOL]` calls fall through to `[ISSUE_TRACKER_TOOL]`, so load `/acli` instead. See §9 for the per-modality split.
 
 ```
 [TMS_TOOL] Create ATP:
@@ -234,7 +234,7 @@ Rules:
 1. ATP and ATR names always include the User Story ID. This makes them searchable, unique per story, and impossible to confuse across stories.
 2. TC names follow the pattern `{US_ID or TS_ID}: TC#: Validate <CORE> <CONDITIONAL>`, where `CORE` is verb + object describing the behavior (e.g., `successful login`, `authentication error`) and `CONDITIONAL` is the distinguishing condition (e.g., `with valid credentials`, `when password is incorrect`). The prefix is the Test Set ID (Xray with Test Sets) or the User Story ID (native Jira or Xray without Test Sets).
 3. Code-side IDs match the TMS-generated key exactly. The `@atc('PROJ-456')` decorator uses the TMS issue key, not an invented module prefix.
-4. Module prefixes (e.g., `AUTH-`, `ORD-`) are used only for local folder/file organization under `.context/PBI/.../tests/` — they are not the canonical ID.
+4. Module prefixes (e.g., `AUTH-`, `ORD-`) are used only for local folder/file organization under `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/test-cases/` — they are not the canonical ID.
 
 ---
 
@@ -322,7 +322,7 @@ All operations use `[TMS_TOOL]` for TMS-specific actions and `[ISSUE_TRACKER_TOO
 
 ### List and read
 
-> **Prerequisite**: Load `/xray-cli` skill (Modality A). In Modality B, load `/acli` — these calls map to JQL/search via `[ISSUE_TRACKER_TOOL]`.
+> **Prerequisite**: Load `/xray-cli` skill (Modality jira-xray). In Modality jira-native, load `/acli` — these calls map to JQL/search via `[ISSUE_TRACKER_TOOL]`.
 
 ```
 [TMS_TOOL] List ATPs:
@@ -351,7 +351,7 @@ When the candidate list has more than 10 TCs, creating them serially burns the o
 
 **Sharding rule**: `ceil(N / 10)` subagents, each handling roughly equal-sized chunks. If `N > 100`, chunks must be larger than 10 each (cap is on subagent count, not chunk size). Each dispatch follows the 6-component briefing format in `.claude/skills/agentic-qa-core/references/briefing-template.md`.
 
-##### Modality A — Xray on Jira (subagent loads `/xray-cli`)
+##### Modality jira-xray (subagent loads `/xray-cli`)
 
 Briefing (6 components per `agentic-qa-core/references/briefing-template.md`):
 
@@ -373,7 +373,7 @@ Exact instructions:
      c. [ISSUE_TRACKER_TOOL] Update Issue: issue=<TEST_KEY>, description={full Description template per jira-test-management.md §7}.
      d. [TMS_TOOL] AddTests: testPlan=<ATP_KEY>, tests=[<TEST_KEY>].
      e. [TMS_TOOL] AddTests: execution=<ATR_KEY>, tests=[<TEST_KEY>].
-     f. [ISSUE_TRACKER_TOOL] Link Issues: linkType="is tested by", outward=<TEST_KEY>, inward=<STORY_KEY>.
+     f. [ISSUE_TRACKER_TOOL] Link Issues: linkType={{jira.link_types.test.name}}, outward=<TEST_KEY>, inward=<STORY_KEY>.   # Story is tested by Test (resolve by slug + verify direction per agentic-qa-core/references/traceability-linking.md §2/§4)
   2. Apply labels per the methodology naming convention (see `tms-conventions.md` §Labels).
 
 Report format:
@@ -399,7 +399,7 @@ Rules:
   - Critical Rule #8 (File Operations): never overwrite an existing TC silently — if the summary already exists, report and skip.
 ```
 
-##### Modality B — Jira-native (no Xray plugin; subagent loads `/acli`)
+##### Modality jira-native (no Xray plugin; subagent loads `/acli`)
 
 Briefing (6 components per `agentic-qa-core/references/briefing-template.md`):
 
@@ -410,7 +410,7 @@ Context docs:
   - <PBI_FOLDER>/test-specs/<spec>.md (TC definitions for this chunk)
   - .agents/jira-fields.json (custom field IDs auto-discovered by `bun run jira:sync-fields`)
   - .agents/jira-required.yaml (custom-field manifest)
-  - .claude/skills/test-documentation/references/jira-setup.md §3 (Modality B field layout)
+  - .claude/skills/test-documentation/references/jira-setup.md §3 (Modality jira-native field layout)
   - .claude/skills/test-documentation/references/jira-test-management.md §7 (Description template)
 
 Skills to load: /acli
@@ -420,7 +420,7 @@ Exact instructions:
      a. [ISSUE_TRACKER_TOOL] Create Issue: project=<PROJECT_KEY>, issueType=Test, summary="{per TC naming convention}", priority={Critical|High|Medium|Low}, labels=[regression, ...], epic=<REGRESSION_EPIC_KEY>.
      b. Capture the returned issue key as <TEST_KEY>.
      c. [ISSUE_TRACKER_TOOL] Update Issue: issue=<TEST_KEY>, description={full Description template per jira-test-management.md §7}, fields={ {{jira.test_status}}: Draft, {{jira.to_be_automated}}: <bool> }.
-     d. [ISSUE_TRACKER_TOOL] Link Issues: linkType="is tested by", outward=<TEST_KEY>, inward=<STORY_KEY>.
+     d. [ISSUE_TRACKER_TOOL] Link Issues: linkType={{jira.link_types.test.name}}, outward=<TEST_KEY>, inward=<STORY_KEY>.   # Story is tested by Test
   2. Do NOT recreate ATP/ATR custom fields on the Story — those were already populated by the orchestrator before dispatch.
 
 Report format:
@@ -455,9 +455,9 @@ After all parallel subagents return, the orchestrator:
 
 ##### Fallback to serial (N <= 10)
 
-For N <= 10 TCs, classify inline — the dispatch overhead is not justified. The serial flows below (Modality A and Modality B) remain canonical. They also describe the procedure each parallel subagent runs internally for its assigned chunk.
+For N <= 10 TCs, classify inline — the dispatch overhead is not justified. The serial flows below (Modality jira-xray and Modality jira-native) remain canonical. They also describe the procedure each parallel subagent runs internally for its assigned chunk.
 
-#### Modality A — Xray on Jira
+#### Modality jira-xray
 
 > **Prerequisite**: Load `/xray-cli` and `/acli` skills before executing commands below.
 
@@ -473,12 +473,12 @@ For N <= 10 TCs, classify inline — the dispatch overhead is not justified. The
   environment: {from session context}
 
 [ISSUE_TRACKER_TOOL] Link Issues:
-  linkType: "tests"
+  linkType: {{jira.link_types.test.name}}   # Story is tested by Test Plan
   outward: {ATP_KEY}
   inward:  {STORY_KEY}
 
 [ISSUE_TRACKER_TOOL] Link Issues:
-  linkType: "is tested by"
+  linkType: {{jira.link_types.test.name}}   # Story is tested by Test Execution
   outward: {ATR_KEY}
   inward:  {STORY_KEY}
 
@@ -496,7 +496,7 @@ For N <= 10 TCs, classify inline — the dispatch overhead is not justified. The
   tests: [{TEST_KEY}]
 ```
 
-#### Modality B — Jira-native (no Xray)
+#### Modality jira-native (no Xray)
 
 > **Prerequisite**: Load `/acli` skill before executing commands below.
 
@@ -537,14 +537,14 @@ For N <= 10 TCs, classify inline — the dispatch overhead is not justified. The
     Test Status: Draft
 
 [ISSUE_TRACKER_TOOL] Link Issues:
-  linkType: "is tested by"
+  linkType: {{jira.link_types.test.name}}   # Story is tested by Test
   outward: {TEST_KEY}
   inward:  {STORY_KEY}
 ```
 
 ### Update
 
-> **Prerequisite**: Load `/xray-cli` skill (Modality A). In Modality B, load `/acli` — these update calls become `[ISSUE_TRACKER_TOOL] Update Issue` on the Story or Test customfields.
+> **Prerequisite**: Load `/xray-cli` skill (Modality jira-xray). In Modality jira-native, load `/acli` — these update calls become `[ISSUE_TRACKER_TOOL] Update Issue` on the Story or Test customfields.
 
 ```
 [TMS_TOOL] Update ATP:
@@ -568,7 +568,7 @@ For N <= 10 TCs, classify inline — the dispatch overhead is not justified. The
 
 ### Verify traceability
 
-> **Prerequisite**: Load `/xray-cli` skill (Modality A). In Modality B, load `/acli` and walk the links manually via `[ISSUE_TRACKER_TOOL] Search Issues`.
+> **Prerequisite**: Load `/xray-cli` skill (Modality jira-xray). In Modality jira-native, load `/acli` and walk the links manually via `[ISSUE_TRACKER_TOOL] Search Issues`.
 
 ```
 [TMS_TOOL] Verify Traceability:
