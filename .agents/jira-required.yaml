@@ -172,6 +172,31 @@ optional:
 # treats these as informational (not errors). When a real field is configured,
 # move the entry to `required:` above and update the corresponding skill files
 # to use {{jira.<slug>}} instead of the literal customfield_X marker.
+# ---- Link Types (Jira issue-to-issue relationships) ----
+# Consumed by scripts/lint-vars.ts validation.
+# Run `bun run jira:sync-link-types` after adding or modifying entries to
+# reconcile slug names against your Jira workspace.
+link_types:
+  required:
+    blocks:
+      name: Blocks
+      outward: blocks
+      inward: is blocked by
+      description: One issue blocks another from being worked on or released.
+      used_by: [acli, sprint-testing, test-documentation]
+    problem_incident:
+      name: Problem/Incident
+      outward: causes
+      inward: caused by
+      description: Incidents (problems) that caused the bug.
+      used_by: [acli, sprint-testing]
+    test:
+      name: Test
+      outward: tests
+      inward: is tested by
+      description: Link between a Test issue and the Story / Bug it validates.
+      used_by: [acli, sprint-testing, test-documentation]
+
 unmapped:
 # (No unmapped slugs at this time. See README §5.3 for the unmapped pattern
 # — declare a slug here when the methodology expects a field semantically but
