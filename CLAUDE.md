@@ -380,4 +380,53 @@ Self-check after every task: *did I make decision, fix bug, learn something non-
 
 ---
 
+## Project Assessment (Phase 1)
+
+Assessment Date: 2026-06-18
+
+### Testing Maturity: 0/4
+- Current state: None — no test files found in target repo (`upex-bunkai-tms`)
+- Test files: 0
+- Frameworks: None detected (pre-MVP project)
+- Coverage: N/A
+- Notes: Target is a pre-production project. All QA testing infra lives in this repo (ajuste-bunkai-qa-engineering), not in the target. Greenfield automation opportunity.
+
+### Documentation State: Good
+- README: yes (comprehensive, boilerplate onboarding)
+- API docs: `/api` contracts defined in `.context/SRS/api-contracts.yaml`
+- Architecture: yes (C4 diagrams, ERD, component specs)
+- Setup guide: yes (README + INSTALLER.md)
+
+### Code Quality
+- [x] ESLint: configured (`@antfu/eslint-config`)
+- [x] Prettier: configured
+- [x] TypeScript: configured (strict mode expected)
+- [ ] Pre-commit hooks: Husky configured but only runs lint-staged
+
+### CI/CD Maturity: Basic
+- No GitHub Actions workflows detected in target repo
+- Build/typecheck/lint run locally via `bun run repo:check`
+- Vercel auto-deploys on push (staging branch + main)
+
+### Identified Risks
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| No CI/CD pipelines | MEDIUM | Set up GH Actions during /adapt-framework or immediately after |
+| No OpenAPI spec served at runtime | MEDIUM | Target has `api-contracts.yaml` in SRS — confirm live endpoint or generate via `bun run api:sync` |
+| DBHub credentials not configured | MEDIUM | Populate `.env` DBHUB_* vars before [DB_TOOL] usage |
+| Pre-MVP project — features may shift | LOW | Track via PBI sync; re-run `/business-data-map` as needed |
+
+### Phase Prioritization
+
+- Phase 1: Normal — target has excellent docs, minimal reverse-engineering needed
+- Phase 2: Normal — adapt existing PRD/SRS into QA context
+- Phase 3: Normal — infrastructure gap analysis is the main value-add
+- Phase 4: Normal — standard PBI mapping
+
+### Blockers
+- [ ] No CI pipelines in target — set up at least smoke tests before regression testing phase
+
+---
+
 *AI persistent memory. Update when behaviors / skills / rules change.*
