@@ -30,9 +30,11 @@ import type { components, paths } from '@openapi';
 // ============================================================================
 
 /** TODO: Replace with your actual schema name from openapi-types.ts */
+// @ts-expect-error — placeholder reference
 export type ExampleModel = components['schemas']['ExampleModel'];
 
 /** TODO: Replace with your actual schema name */
+// @ts-expect-error — placeholder reference
 export type ExampleListModel = components['schemas']['ExampleListModel'];
 
 // ============================================================================
@@ -40,6 +42,7 @@ export type ExampleListModel = components['schemas']['ExampleListModel'];
 // ============================================================================
 
 /** Private helper: extracts the POST operation type for cleaner access */
+// @ts-expect-error — placeholder reference
 type CreateExamplePath = paths['/api/example']['post'];
 
 /** Request body for creating an example resource */
@@ -52,6 +55,7 @@ export type CreateExampleResponse = CreateExamplePath['responses']['201']['conte
 // Endpoint Types - GET /api/example/{id}
 // ============================================================================
 
+// @ts-expect-error — placeholder reference
 type GetExamplePath = paths['/api/example/{id}']['get'];
 
 /** Path parameters (e.g., { id: string }) */
@@ -64,6 +68,7 @@ export type GetExampleResponse = GetExamplePath['responses']['200']['content']['
 // Endpoint Types - PUT /api/example/{id}
 // ============================================================================
 
+// @ts-expect-error — placeholder reference
 type UpdateExamplePath = paths['/api/example/{id}']['put'];
 
 export type UpdateExampleRequest = UpdateExamplePath['requestBody']['content']['application/json'];

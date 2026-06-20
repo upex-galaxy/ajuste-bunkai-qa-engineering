@@ -55,6 +55,7 @@
     "test-results",
     "allure-results",
     "allure-report",
+    "api/schemas/example.types.ts",
     "reports"
   ]
 }
