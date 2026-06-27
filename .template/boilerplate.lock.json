@@ -3,13 +3,13 @@
   "templateRepo": "upex-galaxy/agentic-qa-boilerplate",
   "templateCommit": "6a751463e1445a8466bac3540fc9409d6f883965",
   "perComponentCommit": {
-    "skills": "6e3e33bf874838b049406728ab1ff3bec351149f",
+    "skills": "db7ed7055b2734372d33cfbe83167d2c7c89e85d",
     "commands": "6a751463e1445a8466bac3540fc9409d6f883965",
-    "scripts": "6e3e33bf874838b049406728ab1ff3bec351149f",
-    "docs": "6a751463e1445a8466bac3540fc9409d6f883965",
+    "scripts": "db7ed7055b2734372d33cfbe83167d2c7c89e85d",
+    "docs": "db7ed7055b2734372d33cfbe83167d2c7c89e85d",
     "cli": "6a751463e1445a8466bac3540fc9409d6f883965",
     "vscode": "6a751463e1445a8466bac3540fc9409d6f883965",
-    "husky": "6a751463e1445a8466bac3540fc9409d6f883965",
+    "husky": "db7ed7055b2734372d33cfbe83167d2c7c89e85d",
     "agents-docs": "6e3e33bf874838b049406728ab1ff3bec351149f",
     "claude-config": "6a751463e1445a8466bac3540fc9409d6f883965",
     "tooling": "6a751463e1445a8466bac3540fc9409d6f883965",
@@ -18,9 +18,10 @@
   "syncedComponents": [],
   "ignoreFileSync": {
     ".gitignore": {
-      "lastSyncedSha": "597eb91c45f4490cc9ed77cd1204fadc792add6d",
+      "lastSyncedSha": "f3184f5cef1aeb34e57079198388edbda3df5427",
       "appendedLines": [
-        "**/evidence/"
+        "**/evidence/",
+        ".template/claude-md.upstream.sha"
       ]
     },
     ".prettierignore": {
@@ -54,6 +55,6 @@
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-06-20T23:32:04.198Z",
+  "lastSyncedAt": "2026-06-27T23:10:20.317Z",
   "variableSystemVersion": 1
 }
