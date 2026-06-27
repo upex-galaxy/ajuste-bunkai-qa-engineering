@@ -210,6 +210,18 @@ link_types:
       inward: is tested by
       description: Link between a Test issue and the Story / Bug it validates.
       used_by: [acli, sprint-testing, test-documentation]
+    test_design:
+      name: Test Design
+      outward: designs
+      inward: is designed by
+      description: Link from a Test to the issue whose scenarios it verifies.
+      used_by: [acli, sprint-testing, test-documentation]
+    test_execute:
+      name: Test Execution
+      outward: executes
+      inward: is executed by
+      description: Link from a Test Execution to the Test Plan or Story it covers.
+      used_by: [acli, sprint-testing, test-documentation]
 
 unmapped:
 # (No unmapped slugs at this time. See README §5.3 for the unmapped pattern
