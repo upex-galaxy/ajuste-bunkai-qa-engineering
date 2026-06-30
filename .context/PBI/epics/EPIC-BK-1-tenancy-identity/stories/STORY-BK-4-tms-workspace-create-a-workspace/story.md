@@ -75,7 +75,7 @@
 
 ### Story (1)
 
-- [BK-8](https://jira.upexgalaxy.com/browse/BK-8): TMS-Project | Create a project inside a workspace _(QA Approved)_
+- [BK-8](https://jira.upexgalaxy.com/browse/BK-8): TMS-Project | Create a project inside a workspace _(Ready For Release)_
 
 ---
 

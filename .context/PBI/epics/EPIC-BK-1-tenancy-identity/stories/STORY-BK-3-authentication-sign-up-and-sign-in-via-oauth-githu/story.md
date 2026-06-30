@@ -3,7 +3,7 @@
 **Jira Key:** [BK-3](https://jira.upexgalaxy.com/browse/BK-3)
 **Epic:** [BK-1](https://jira.upexgalaxy.com/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** 8
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -140,6 +140,7 @@ See comment "Shift-Left Refinement Mirror" on this issue for the full refined AC
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -147,7 +148,7 @@ See comment "Shift-Left Refinement Mirror" on this issue for the full refined AC
 ## Metadata
 
 - **Created:** 5/20/2026
-- **Updated:** 6/9/2026
+- **Updated:** 6/25/2026
 - **Reporter:** Ely
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** auth, mvp, shift-left-2026-05-26, shift-left-reviewed, wave-1

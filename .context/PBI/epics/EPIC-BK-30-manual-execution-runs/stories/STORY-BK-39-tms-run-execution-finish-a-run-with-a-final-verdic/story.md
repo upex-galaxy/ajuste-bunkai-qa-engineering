@@ -3,7 +3,7 @@
 **Jira Key:** [BK-39](https://jira.upexgalaxy.com/browse/BK-39)
 **Epic:** [BK-30](https://jira.upexgalaxy.com/browse/BK-30) (Manual Execution & Runs)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** QA Approved
 **Priority:** Medium
 **Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -327,23 +327,28 @@ Scenario: Human, AI Agent, and CI finish handling are consistent
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 
 ---
 
 ## Traceability
 
+### Bug (1)
+
+- [BK-182](https://jira.upexgalaxy.com/browse/BK-182): Bearer run creation cannot resolve active workspace _(Open)_
+
 ### Story (1)
 
-- [BK-34](https://jira.upexgalaxy.com/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Ready For Dev)_
+- [BK-34](https://jira.upexgalaxy.com/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(QA Approved)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/29/2026
-- **Updated:** 6/14/2026
+- **Updated:** 6/26/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** jesusgpythondev
 - **Labels:** shift-left-2026-06-13, shift-left-reviewed
 
 ---
