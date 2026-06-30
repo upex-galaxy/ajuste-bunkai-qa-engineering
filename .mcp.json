@@ -23,7 +23,7 @@
       ]
     },
     "dbhub": {
-      "command": "bunx",
+      "command": "npx",
       "args": ["-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"]
     },
     "openapi": {
