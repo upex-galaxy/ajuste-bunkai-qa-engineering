@@ -81,7 +81,7 @@ function parseArgs(args: string[]): ParsedArgs {
     const a = args[i];
     if (a === 'help' || a === '--help' || a === '-h') { out.help = true; }
     else if (a === '--auto') { out.auto = true; }
-    else if (a === '--dry-run' || a === '—dry-run') { out.dryRun = true; }
+    else if (a === '--dry-run') { out.dryRun = true; }
     else if (a === '--rollback' || a === 'rollback') { out.rollback = true; }
     else if (a === '--force') { out.force = true; }
     else if (a === '--list') { out.listSkills = true; }

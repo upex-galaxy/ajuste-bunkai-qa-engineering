@@ -510,6 +510,76 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
 .tpl-howto .qitem.answered .qexp{display:block}
 .tpl-howto .qexp b{color:#fff}
 .tpl-howto .qhint{font-size:13px;color:var(--text-3);font-family:'JetBrains Mono',monospace;margin-top:6px}
+
+/* ===== DASHBOARD CHART CARDS (donut / pie / gauge / stacked / blocked) ===== */
+.tpl-howto .chartcard{display:flex;flex-direction:column;padding:18px 20px}
+.tpl-howto .chartcard .cq{font-size:16px;font-weight:700;color:#fff;line-height:1.32;min-height:42px}
+.tpl-howto .chartcard .cm{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--accent);margin-top:5px;text-transform:none}
+.tpl-howto .chartcard .cm.ill{color:var(--warn)}
+.tpl-howto .chartwrap{display:flex;align-items:center;justify-content:center;gap:16px;margin:14px 0;flex:1;min-height:128px}
+.tpl-howto .chartans{font-size:12.5px;color:var(--text-2);line-height:1.5;border-top:1px dashed var(--border);padding-top:9px;margin-top:auto}
+.tpl-howto .chartans b{color:#fff;font-weight:600}
+
+/* donut & pie */
+.tpl-howto .donut{position:relative;width:124px;height:124px;border-radius:50%;flex:none}
+.tpl-howto .donut::before{content:"";position:absolute;inset:25px;border-radius:50%;background:var(--surface);z-index:1}
+.tpl-howto .donut .dlabel{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2}
+.tpl-howto .donut .dlabel .dv{font-size:29px;font-weight:900;line-height:1;letter-spacing:-.02em}
+.tpl-howto .donut .dlabel .dn{font-size:10px;color:var(--text-3);font-family:'JetBrains Mono',monospace;margin-top:3px}
+.tpl-howto .pie{position:relative;width:120px;height:120px;border-radius:50%;flex:none;box-shadow:0 0 0 1px var(--border) inset}
+
+/* legend */
+.tpl-howto .legend{display:flex;flex-direction:column;gap:6px;font-size:12px;min-width:124px}
+.tpl-howto .legend-item{display:flex;align-items:center;gap:8px;color:var(--text-2);white-space:nowrap}
+.tpl-howto .legend-item .swatch{width:11px;height:11px;border-radius:3px;flex:none}
+.tpl-howto .legend-item b{color:#fff;font-weight:700;font-family:'JetBrains Mono',monospace;margin-left:auto;padding-left:8px}
+
+/* stacked bar */
+.tpl-howto .stackwrap{display:flex;flex-direction:column;gap:12px;width:100%}
+.tpl-howto .stacked{display:flex;width:100%;height:30px;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.tpl-howto .stacked .seg{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:0;overflow:hidden}
+.tpl-howto .stacked-legend{display:grid;grid-template-columns:1fr 1fr;gap:5px 14px;font-size:11.5px}
+
+/* gauge (semicircle) */
+.tpl-howto .gauge{position:relative;width:156px;height:88px;overflow:hidden;flex:none}
+.tpl-howto .gauge .garc{position:absolute;top:0;left:0;width:156px;height:156px;border-radius:50%}
+.tpl-howto .gauge .ghole{position:absolute;top:26px;left:26px;width:104px;height:104px;border-radius:50%;background:var(--surface)}
+.tpl-howto .gauge .gval{position:absolute;left:0;right:0;bottom:2px;text-align:center;font-size:26px;font-weight:900;line-height:1;letter-spacing:-.02em}
+.tpl-howto .gauge .gsub{position:absolute;left:0;right:0;bottom:-18px;text-align:center;font-size:10px;color:var(--text-3);font-family:'JetBrains Mono',monospace}
+
+/* blocked / unmeasurable chart */
+.tpl-howto .blocked{position:relative;width:100%}
+.tpl-howto .blocked .bars{margin-top:0;filter:grayscale(1) opacity(.5)}
+.tpl-howto .blocked .blockover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:repeating-linear-gradient(135deg,transparent 0 9px,color-mix(in srgb,var(--bad) 7%,transparent) 9px 18px)}
+.tpl-howto .blocked .blockover span{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--bad);
+  background:var(--surface);border:1px solid color-mix(in srgb,var(--bad) 45%,transparent);border-radius:8px;padding:6px 12px}
+
+/* ===== mini chart icons (primer / legend slide) ===== */
+.tpl-howto .iconwrap{display:flex;align-items:center;justify-content:center;height:70px;margin-bottom:10px}
+.tpl-howto .donut.mini{width:62px;height:62px}
+.tpl-howto .donut.mini::before{inset:13px}
+.tpl-howto .pie.mini{width:60px;height:60px}
+.tpl-howto .gauge.mini{width:80px;height:46px}
+.tpl-howto .gauge.mini .garc{width:80px;height:80px}
+.tpl-howto .gauge.mini .ghole{top:13px;left:13px;width:54px;height:54px}
+.tpl-howto .stacked.mini{height:18px;width:86px}
+.tpl-howto .minibars{display:flex;flex-direction:column;gap:5px;width:80px}
+.tpl-howto .minibars .bt{height:9px}
+.tpl-howto .chartcard.tiny{padding:16px 18px}
+.tpl-howto .chartcard.tiny h4{margin:0 0 4px;font-size:16px}
+.tpl-howto .chartcard.tiny p{font-size:12.5px;color:var(--text-2);margin:0;line-height:1.45}
+.tpl-howto .chartcard.tiny p b{color:#fff;font-weight:600}
+
+/* ===== PART C :: horizontal centering (match reference automation decks) =====
+   Big screens left an awkward right gap because content stretched full-width.
+   Center each in-flow block and cap its width → balanced, centered layout.
+   Absolutely-positioned chrome (footer, speaker, notes) is excluded. */
+.tpl-howto .slide{align-items:center}
+.tpl-howto .slide > *:not(.deck-footer):not(.deck-header):not(.notes):not(.speaker){
+  width:100%;max-width:1360px;margin-left:auto;margin-right:auto}
+.tpl-howto .slide.center > *:not(.deck-footer):not(.notes):not(.speaker),
+.tpl-howto .slide.divider > *:not(.deck-footer):not(.notes):not(.speaker){max-width:1120px}
 </style>
 </head>
 <body class="tpl-howto" style="--a1:#ff7b72;--a2:#f0883e;--a3:#d2a8ff">
@@ -519,20 +589,20 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
 <section class="slide" data-title="Portada">
   <p class="kicker run">how-it-works · agentic-qa · defect-management</p>
   <h1 class="h1 anim-fade-up" data-anim="fade-up">Defect Management — Gestionar la <span class="grad">Calidad por sus Incidencias</span></h1>
-  <p class="lede mt-m">Bug, Defect, Improvement: el mismo síntoma, distinta estrategia de gestión. Cómo se reportan bajo el estándar UPEX, cómo viven en su workflow, y cómo se convierten en métricas que responden preguntas de calidad.</p>
-  <div class="speaker"><div class="av"></div><div><b>Del reporte a la métrica</b><span>parte 1: las 3 incidencias · parte 2: workflow + campos UPEX · parte 3: medir con datos reales de BK</span></div></div>
-  <div class="deck-footer"><span class="mono">Jira · estándar UPEX · proyecto Bunkai (BK)</span><span class="slide-number" data-current="1" data-total="34"></span></div>
+  <p class="lede mt-m">Bug, Defect, Improvement: el mismo síntoma, distinta estrategia de gestión. Cómo se reportan bajo un estándar de calidad reusable, cómo viven en su workflow, y cómo se convierten en métricas que responden preguntas de calidad.</p>
+  <div class="speaker"><div class="av"></div><div><b>Del reporte a la métrica</b><span>parte 1: las 3 incidencias · parte 2: workflow + campos del estándar · parte 3: medir (ejemplo ShopFlow)</span></div></div>
+  <div class="deck-footer"><span class="mono">Jira · estándar de calidad · proyecto de ejemplo ShopFlow (SHOP)</span><span class="slide-number" data-current="1" data-total="38"></span></div>
   <div class="notes">Encuadre: esto NO es sobre casos de prueba ni test plans — es sobre la gestión de incidencias de error (Bug/Defect/Improvement): cómo se reportan, cómo transitan y cómo se miden. La meta final es que el equipo de producto vea la salud de la app con sus propios ojos.</div>
 </section>
 
 <!-- 2. STAT HOOK -->
 <section class="slide center tc" data-title="Stat gancho">
   <div>
-    <p class="kicker">el dato que duele</p>
-    <div class="bigstat"><span class="grad">1 / 33</span></div>
-    <h3>En BK, solo <b>1 de 33</b> incidencias tiene el campo <span class="mono">Components</span> relleno. La data existe — pero no responde ni una pregunta. Una incidencia mal documentada es una incidencia que no se puede medir.</h3>
+    <p class="kicker">el dato que responde</p>
+    <div class="bigstat"><span class="grad">40 / 40</span></div>
+    <h3>En ShopFlow, las <b>40 incidencias</b> tienen <span class="mono">Components</span> — y cada campo del estándar — relleno. La data no solo existe: <b>responde cada pregunta de calidad</b>. Lo que rellenas con disciplina hoy es lo que el dashboard sabe medir mañana.</h3>
   </div>
-  <div class="notes">Arranca con la tesis: gestionar defectos no es abrir tickets, es generar datos que respondan preguntas. Si los campos están vacíos, el dashboard está ciego. Volveremos a este número en la parte 3.</div>
+  <div class="notes">Arranca con la tesis: gestionar defectos no es abrir tickets, es generar datos que respondan preguntas. ShopFlow rellena el 100% de sus campos → el dashboard ve todo. Volveremos a este equipo modelo en la parte 3.</div>
 </section>
 
 <!-- 3. AGENDA -->
@@ -541,8 +611,8 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
   <h2 class="h2" data-anim="fade-up">Tres Partes: Distinguir, Gestionar, Medir</h2>
   <div class="stack mt-l anim-stagger-list">
     <div class="agenda-row"><span class="anum">01</span><span class="at">Las tres incidencias — Bug vs Defect vs Improvement: mismo término, distinta estrategia de gestión</span><span class="ad">distinguir</span></div>
-    <div class="agenda-row"><span class="anum">02</span><span class="at">El estándar UPEX — un solo workflow, los mismos campos, y el rol clave de Components</span><span class="ad">gestionar</span></div>
-    <div class="agenda-row"><span class="anum">03</span><span class="at">Medir la calidad — de campos rellenos a métricas y dashboards que responden preguntas (datos reales de BK)</span><span class="ad">medir</span></div>
+    <div class="agenda-row"><span class="anum">02</span><span class="at">El estándar de calidad — un solo workflow, los mismos campos, y el rol clave de Components</span><span class="ad">gestionar</span></div>
+    <div class="agenda-row"><span class="anum">03</span><span class="at">Medir la calidad — de campos rellenos a métricas y dashboards que responden preguntas (ejemplo ShopFlow)</span><span class="ad">medir</span></div>
   </div>
   <p class="qhint mt-l">3 quizzes interactivos a lo largo del recorrido — haz clic en las respuestas.</p>
   <div class="notes">La parte 3 es la más importante: las métricas. Las partes 1 y 2 construyen el vocabulario y la disciplina que hacen posible medir.</div>
@@ -638,7 +708,7 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
       <p class="dim">Un Bug/Defect pasa por <b>RCA</b> y se descubre que el "error" era en realidad el comportamiento especificado. Se transforma: a Improvement, o a una nueva User Story.</p>
     </div>
   </div>
-  <div class="callout warn mt-m"><h4>En el workflow esto es literal</h4><p>La transición <span class="mono">is not a Bug</span> lleva un Bug/Defect desde <span class="mono">Open</span> al estado terminal <span class="mono">Enhancement</span> — la reclasificación está cableada en el flujo UPEX, no es informal.</p></div>
+  <div class="callout warn mt-m"><h4>En el workflow esto es literal</h4><p>La transición <span class="mono">is not a Bug</span> lleva un Bug/Defect desde <span class="mono">Open</span> al estado terminal <span class="mono">Enhancement</span> — la reclasificación está cableada en el flujo del estándar, no es informal.</p></div>
   <div class="notes">Conectar con la parte 2: el estado terminal "Enhancement" y la transición "is not a Bug" son exactamente este camino. RCA puede convertir un reporte de error en un requerimiento.</div>
 </section>
 
@@ -691,10 +761,10 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
 <section class="slide divider" data-title="Parte 2">
   <div>
     <p class="part-no">PARTE 02</p>
-    <h1 class="h1">El Estándar UPEX<br><span class="grad">Un Workflow, los Mismos Campos</span></h1>
+    <h1 class="h1">El Estándar de Calidad<br><span class="grad">Un Workflow, los Mismos Campos</span></h1>
     <p class="lede">Las tres incidencias comparten <b>exactamente</b> el mismo esquema de workflow y los mismos campos. Reportar disciplinadamente hoy es lo que habilita medir mañana.</p>
   </div>
-  <div class="notes">Aclarar que esto es un estándar UPEX — una recomendación de gestión, no una ley universal. Pero es un estándar probado y consistente entre proyectos UPEX en Jira.</div>
+  <div class="notes">Aclarar que esto es un estándar de gestión reusable — una recomendación, no una ley universal. Pero es un estándar probado y consistente que cualquier equipo puede adoptar en Jira.</div>
 </section>
 
 <!-- 13. SAME SCHEME -->
@@ -768,7 +838,7 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
 <!-- 17. FIELDS -->
 <section class="slide" data-title="Campos">
   <p class="kicker">qué se rellena al reportar</p>
-  <h2 class="h2" data-anim="fade-up">Los Campos del Estándar UPEX</h2>
+  <h2 class="h2" data-anim="fade-up">Los Campos del Estándar de Calidad</h2>
   <div class="grid g2 mt-s">
     <div>
       <h4 class="mb-s" style="color:var(--good)">Siempre (alta señal)</h4>
@@ -854,8 +924,8 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
       <p class="dim">"¿Qué parte de la app falla más?" se vuelve una sola query. Habilita <b>ownership</b> (qué equipo dueño de qué componente) y <b>routing</b> automático de incidencias.</p>
     </div>
   </div>
-  <div class="callout warn mt-m"><h4>Pero solo si se rellena</h4><p>En BK hoy: <b>1 de 33</b> incidencias tiene Components. Un dashboard por componente estaría <b>vacío</b>. Es la recomendación #1 de higiene — lo vemos en la parte 3.</p></div>
-  <div class="notes">Énfasis del usuario: Components es flexible (épicas/features) y poderoso para agrupar. Pero la data real de BK muestra que está sin usar — gran oportunidad de enseñanza sobre por qué configurar y rellenar este campo.</div>
+  <div class="callout mt-m"><h4>Y ShopFlow lo rellena siempre</h4><p>Las <b>40 incidencias</b> de ShopFlow marcan su Component → el dashboard de ownership existe y dice qué módulo concentra los defectos. Regla en una línea: <i>lo que no rellenas no lo puedes medir</i> — por eso es la recomendación #1 de higiene, y ShopFlow no deja ninguno vacío. Lo vemos en la parte 3.</p></div>
+  <div class="notes">Énfasis: Components es flexible (épicas/features) y poderoso para agrupar. ShopFlow lo rellena en las 40 incidencias — por eso su dashboard de ownership se puede dibujar entero. Es el campo que más equipos olvidan y el que más preguntas habilita.</div>
 </section>
 
 <!-- 21. QUIZ 2 -->
@@ -879,7 +949,7 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
         <div class="opt"><span class="mk">B</span><span>Priority</span></div>
         <div class="opt" data-correct="1"><span class="mk">C</span><span>Components</span></div>
       </div>
-      <div class="qexp"><b>Components.</b> Es el campo de agrupación por parte del producto (features/épicas). Sin él relleno, ese dashboard no se puede construir — exactamente el gap real de BK (1/33).</div>
+      <div class="qexp"><b>Components.</b> Es el campo de agrupación por parte del producto (features/épicas). En ShopFlow está relleno en las 40 incidencias, así que ese dashboard se construye entero y muestra que Checkout y Auth lideran.</div>
     </div>
   </div>
   <div class="notes">Refuerza: triage terminal (is WAD → REJECTED) y el rol de Components. Recuerda también el otro eje: un typo cosmético antes de una demo = Severity Trivial (impacto bajo) pero Priority High (urgencia alta) — ejes independientes, dos campos (ver slide 18).</div>
@@ -890,9 +960,9 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
   <div>
     <p class="part-no">PARTE 03</p>
     <h1 class="h1">Medir la Calidad<br><span class="grad">De Campos a Preguntas Respondidas</span></h1>
-    <p class="lede">Un dashboard no es una lista de datos — es un set de <b>respuestas</b>. La meta: que producto vea, con sus propios ojos, cómo va la app. Con datos reales de BK.</p>
+    <p class="lede">Un dashboard no es una lista de datos — es un set de <b>respuestas</b>. La meta: que producto vea, con sus propios ojos, cómo va la app. Lo ilustramos con el proyecto de ejemplo ShopFlow.</p>
   </div>
-  <div class="notes">La parte que más le importa al usuario. El principio rector: nadie quiere ver métricas, quiere resolver dudas. Las métricas son el medio.</div>
+  <div class="notes">La parte más importante. El principio rector: nadie quiere ver métricas, quiere resolver dudas. Las métricas son el medio. Los números de ShopFlow son ilustrativos, no de un proyecto real.</div>
 </section>
 
 <!-- 23. PHILOSOPHY -->
@@ -904,7 +974,7 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
       <h3>❌ Dashboard como vertedero</h3>
       <ul>
         <li>Lista de 200 tickets sin agrupar</li>
-        <li>Conteos sin contexto ("hay 33 bugs")</li>
+        <li>Conteos sin contexto ("hay 40 incidencias")</li>
         <li>Métricas que nadie sabe leer</li>
         <li>El equipo de producto no entiende nada</li>
       </ul>
@@ -923,37 +993,37 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
   <div class="notes">Primero la pregunta de calidad, luego la métrica, luego el campo, luego la query. Nunca al revés. Este orden es el corazón de la enseñanza.</div>
 </section>
 
-<!-- 24. REAL BK DATA -->
-<section class="slide" data-title="BK real">
-  <p class="kicker">snapshot real · proyecto BK</p>
-  <h2 class="h2" data-anim="fade-up">Lo que BK Tiene Hoy</h2>
+<!-- 24. EXAMPLE SNAPSHOT (ShopFlow) -->
+<section class="slide" data-title="Ejemplo ShopFlow">
+  <p class="kicker">snapshot · proyecto de ejemplo ShopFlow (casa en orden)</p>
+  <h2 class="h2" data-anim="fade-up">Un Snapshot Típico: ShopFlow</h2>
   <div class="mgrid">
-    <div class="mcard"><div class="mv grad">33</div><div class="mk">familia de defectos</div><div class="md">27 Bug · 4 Defect · 2 Improvement (de 159 issues totales)</div></div>
-    <div class="mcard"><div class="mv grad">15</div><div class="mk">Closed (VERIFIED)</div><div class="md">8 Open · 5 Duplicated · 4 Ready For QA · 1 REJECTED</div></div>
-    <div class="mcard"><div class="mv grad">7</div><div class="mk">Críticas</div><div class="md">6 Mayor · 4 Moderada · 1 Menor — sobre 18 con Severity</div></div>
+    <div class="mcard"><div class="mv grad">40</div><div class="mk">familia de incidencias</div><div class="md">26 Defect · 10 Bug · 4 Improvement — todas tipadas</div></div>
+    <div class="mcard"><div class="mv grad">26</div><div class="mk">Closed (verificadas)</div><div class="md">6 In Progress · 5 Ready For QA · 3 Open</div></div>
+    <div class="mcard"><div class="mv grad">4</div><div class="mk">Críticas</div><div class="md">11 Mayor · 17 Moderada · 8 Menor — 40/40 con Severity</div></div>
   </div>
   <div class="bars">
-    <div class="barrow"><span class="bl">Bug</span><span class="bt" style="width:82%"></span><span class="bn">27</span></div>
-    <div class="barrow"><span class="bl">Defect</span><span class="bt" style="width:12%"></span><span class="bn">4</span></div>
-    <div class="barrow"><span class="bl">Improvement</span><span class="bt" style="width:6%"></span><span class="bn">2</span></div>
+    <div class="barrow"><span class="bl">Defect</span><span class="bt" style="width:100%"></span><span class="bn">26</span></div>
+    <div class="barrow"><span class="bl">Bug</span><span class="bt" style="width:38%"></span><span class="bn">10</span></div>
+    <div class="barrow"><span class="bl">Improvement</span><span class="bt" style="width:15%"></span><span class="bn">4</span></div>
   </div>
-  <div class="notes">Datos reales pulidos del proyecto BK (jira.upexgalaxy.com) el 2026-06-25. 27 Bugs vs 4 Defects — guardar esta proporción para la slide de escape rate; tiene una lectura doble (escape real vs disciplina de taxonomía).</div>
+  <div class="notes">ShopFlow es un proyecto de ejemplo (fictional), pero modela un equipo que SÍ hizo la ingeniería de calidad: 40 incidencias, todos los campos rellenos. 26 Defects vs 10 Bugs — la mayoría se cazó en sprint; guardar esta proporción para la slide de escape rate (28% sano).</div>
 </section>
 
 <!-- 25. HYGIENE REALITY -->
 <section class="slide" data-title="Higiene">
-  <p class="kicker">no puedes medir lo que no rellenas</p>
-  <h2 class="h2" data-anim="fade-up">La Realidad de los Campos en BK</h2>
+  <p class="kicker">lo que rellenas, lo puedes medir</p>
+  <h2 class="h2" data-anim="fade-up">La Casa en Orden: Campos al 100%</h2>
   <div class="bars">
     <div class="barrow"><span class="bl">Priority</span><span class="bt" style="width:100%"></span><span class="bn">100%</span></div>
-    <div class="barrow"><span class="bl">Root Cause</span><span class="bt" style="width:79%"></span><span class="bn">79%</span></div>
-    <div class="barrow"><span class="bl">Resolution</span><span class="bt" style="width:76%"></span><span class="bn">76%</span></div>
-    <div class="barrow"><span class="bl">Severity</span><span class="bt" style="width:55%"></span><span class="bn">55%</span></div>
-    <div class="barrow"><span class="bl">Error Type</span><span class="bt" style="width:55%"></span><span class="bn">55%</span></div>
-    <div class="barrow"><span class="bl">Components</span><span class="bt muted" style="width:3%"></span><span class="bn">3%</span></div>
+    <div class="barrow"><span class="bl">Severity</span><span class="bt" style="width:100%"></span><span class="bn">100%</span></div>
+    <div class="barrow"><span class="bl">Components</span><span class="bt" style="width:100%"></span><span class="bn">100%</span></div>
+    <div class="barrow"><span class="bl">Root Cause</span><span class="bt" style="width:100%"></span><span class="bn">100%</span></div>
+    <div class="barrow"><span class="bl">Error Type</span><span class="bt" style="width:100%"></span><span class="bn">100%</span></div>
+    <div class="barrow"><span class="bl">Resolution</span><span class="bt" style="width:98%"></span><span class="bn">98%</span></div>
   </div>
-  <div class="callout warn mt-m"><h4>El diagnóstico</h4><p><b>Buildable hoy:</b> type, status, priority, resolution, root cause. <b>Con asterisco:</b> severity y error type (~45% sin rellenar → toda gráfica necesita un slice "sin asignar"). <b>Imposible hoy:</b> Components (3%). La higiene de 3 campos duplicaría la cobertura medible.</p></div>
-  <div class="notes">Honestidad ante todo: las gráficas de Severity/Error Type deben mostrar el slice "Unset" (~45%) o filtrarse a los 18 tagueados. Priority está 100% pero 79% es el default "Medium" — cobertura ≠ calidad del dato.</div>
+  <div class="callout mt-m"><h4>El diagnóstico</h4><p>ShopFlow rellena <b>cada campo del estándar</b> en las 40 incidencias → las 8 preguntas de la parte 3 tienen respuesta, sin ningún slice "sin asignar". El principio se cumple, pero al revés: <i>lo que no rellenas no lo puedes medir</i> — y aquí no quedó nada vacío. La disciplina al reportar HOY es la métrica fiable de MAÑANA.</p></div>
+  <div class="notes">Aquí el equipo modelo: cobertura completa. Severity, Components y Error Type al 100% → toda gráfica se dibuja entera, sin porción muted. El único campo que no llega al 100% es Resolution (98%), porque hay incidencias aún abiertas — eso es esperado, no una brecha de higiene.</div>
 </section>
 
 <!-- 26. QUESTIONS -> METRICS (CENTERPIECE) -->
@@ -973,7 +1043,7 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
       <tr><td>¿Cuánto ruido genera el reporte?</td><td><b>Rejection Ratio</b> = (Dup+REJ+CNR)/total</td><td>resolution / status</td></tr>
     </tbody>
   </table>
-  <div class="notes">ESTA es la slide núcleo de la petición. El orden siempre: pregunta primero, métrica después, campo al final. Cada fila es directamente construible (o casi) con los campos UPEX. Escape Rate es la estrella — la siguiente slide la desarrolla.</div>
+  <div class="notes">ESTA es la slide núcleo. El orden siempre: pregunta primero, métrica después, campo al final. Cada fila es directamente construible (o casi) con los campos del estándar. Escape Rate es la estrella — la siguiente slide la desarrolla.</div>
 </section>
 
 <!-- 27. JQL -->
@@ -981,19 +1051,19 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
   <p class="kicker">de la pregunta a la query</p>
   <h2 class="h2" data-anim="fade-up">JQL — el Lenguaje de los Dashboards</h2>
   <div class="terminal mt-s">
-    <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>JQL · proyecto BK</span></div>
+    <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>JQL · proyecto SHOP (ejemplo)</span></div>
 <pre><span class="cmt"># Todos los defectos críticos aún abiertos</span>
-<span class="kw">project</span> = BK <span class="kw">AND</span> issuetype <span class="kw">in</span> (Bug, Defect) <span class="kw">AND</span> <span class="str">"Severity[Select List]"</span> = Crítica <span class="kw">AND</span> statusCategory != Done
+<span class="kw">project</span> = SHOP <span class="kw">AND</span> issuetype <span class="kw">in</span> (Bug, Defect) <span class="kw">AND</span> <span class="str">"Severity[Select List]"</span> = Crítica <span class="kw">AND</span> statusCategory != Done
 
 <span class="cmt"># Escape: bugs post-release vs defects in-sprint</span>
-<span class="kw">project</span> = BK <span class="kw">AND</span> issuetype = Bug      <span class="cmt">→ 27 (escaparon)</span>
-<span class="kw">project</span> = BK <span class="kw">AND</span> issuetype = Defect   <span class="cmt">→ 4  (contenidos)</span>
+<span class="kw">project</span> = SHOP <span class="kw">AND</span> issuetype = Bug      <span class="cmt">→ 10 (escaparon)</span>
+<span class="kw">project</span> = SHOP <span class="kw">AND</span> issuetype = Defect   <span class="cmt">→ 26 (contenidos)</span>
 
-<span class="cmt"># Agrupar por componente (necesita Components relleno)</span>
-<span class="kw">project</span> = BK <span class="kw">AND</span> issuetype = Bug <span class="kw">ORDER BY</span> component
+<span class="cmt"># Agrupar por componente (Components relleno en las 40)</span>
+<span class="kw">project</span> = SHOP <span class="kw">AND</span> issuetype <span class="kw">in</span> (Bug, Defect) <span class="kw">ORDER BY</span> component
 
 <span class="cmt"># Ruido de reporte: descartados</span>
-<span class="kw">project</span> = BK <span class="kw">AND</span> status <span class="kw">in</span> (Duplicated, REJECTED, <span class="str">"Cannot Reproduce"</span>)  <span class="cmt">→ 6</span></pre>
+<span class="kw">project</span> = SHOP <span class="kw">AND</span> status <span class="kw">in</span> (Duplicated, REJECTED, <span class="str">"Cannot Reproduce"</span>)  <span class="cmt">→ 3</span></pre>
   </div>
   <div class="notes">JQL es el motor detrás de cada gadget de dashboard. Una pregunta de calidad bien planteada se traduce casi 1:1 a una cláusula JQL + un group-by. Mostrar que los campos son literalmente los filtros.</div>
 </section>
@@ -1003,7 +1073,7 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
   <p class="kicker">vocabulario de métricas de defectos</p>
   <h2 class="h2" data-anim="fade-up">Las Métricas que Debes Nombrar</h2>
   <table class="dtable mt-s" style="font-size:14px">
-    <thead><tr><th>Métrica</th><th>Qué mide</th><th>Fórmula (en términos UPEX)</th></tr></thead>
+    <thead><tr><th>Métrica</th><th>Qué mide</th><th>Fórmula (en términos del estándar)</th></tr></thead>
     <tbody>
       <tr><td><b>Defect Escape Rate</b></td><td>Fugas a producción</td><td>Bugs / (Bugs + Defects)</td></tr>
       <tr><td><b>DDP / DRE</b></td><td>Eficiencia de detección</td><td>Defects / (Defects + Bugs) — el inverso del escape</td></tr>
@@ -1023,12 +1093,12 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
   <h2 class="h2" data-anim="fade-up">Defect vs Bug = tu Medidor de Escape</h2>
   <p class="lede mt-s">Aquí la taxonomía paga. Como <b>Defect = en sprint</b> y <b>Bug = post-release</b>, su proporción <b>es</b>, literalmente, la salud del shift-left: ¿cuánto contenemos vs cuánto se fuga?</p>
   <div class="mgrid mt-m">
-    <div class="mcard"><div class="mv grad">4</div><div class="mk">Defects (contenidos)</div><div class="md">cazados dentro del sprint</div></div>
-    <div class="mcard"><div class="mv grad">27</div><div class="mk">Bugs (escapados)</div><div class="md">descubiertos post-release</div></div>
-    <div class="mcard"><div class="mv" style="color:var(--bad)">87%</div><div class="mk">Escape Rate aparente</div><div class="md">27 / (27+4)</div></div>
+    <div class="mcard"><div class="mv grad">26</div><div class="mk">Defects (contenidos)</div><div class="md">cazados dentro del sprint</div></div>
+    <div class="mcard"><div class="mv grad">10</div><div class="mk">Bugs (escapados)</div><div class="md">descubiertos post-release</div></div>
+    <div class="mcard"><div class="mv" style="color:var(--good)">28%</div><div class="mk">Escape Rate</div><div class="md">10 / (10+26)</div></div>
   </div>
-  <div class="callout warn mt-m"><h4>Lee el número con honestidad</h4><p>Un 87% aparente puede significar fugas reales — <b>o</b> que el equipo registra casi todo como "Bug" sin usar el work type Defect. La métrica revela el escape <b>y</b> la disciplina de taxonomía. Ambas son hallazgos accionables.</p></div>
-  <div class="notes">Punto crítico de honestidad: con solo 4 Defects registrados, el 87% probablemente refleja sub-uso del tipo Defect más que fuga pura. Eso mismo es un hallazgo: para que esta métrica sea fiable, hay que usar el work type Defect en sprint disciplinadamente. La distinción Bug/Defect del usuario es justo lo que la hace posible.</div>
+  <div class="callout mt-m"><h4>Un 28% es shift-left sano</h4><p>Como ShopFlow usa el work type Defect con disciplina, la lectura es fiable: <b>72% de los defectos se contienen en sprint</b> y solo el 28% escapa a producción. La taxonomía Defect/Bug bien aplicada es justo lo que hace creíble esta métrica.</p></div>
+  <div class="notes">Con 26 Defects contenidos y 10 Bugs escapados, el 28% refleja un shift-left que funciona: la mayoría de las fallas se cazan antes del release. La distinción Bug/Defect usada con disciplina es lo que hace que esta métrica sea fiable en vez de un artefacto de sub-tipado.</div>
 </section>
 
 <!-- 30. DASHBOARD BLUEPRINT -->
@@ -1036,15 +1106,256 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
   <p class="kicker">el home de producto en jira</p>
   <h2 class="h2" data-anim="fade-up">El Dashboard que Producto Quiere Ver</h2>
   <div class="grid g3 mt-s">
-    <div class="card card-accent"><h4>Salud general</h4><p class="dim">Gadgets: por <b>type</b>, por <b>status</b> (lifecycle slice), Escape Rate. <span class="tag ok">listo en BK</span></p></div>
-    <div class="card card-accent"><h4>Gravedad &amp; causa</h4><p class="dim">Pie por <b>Severity</b>, por <b>Root Cause</b>, por <b>Error Type</b>. <span class="tag warn">con slice "sin asignar"</span></p></div>
-    <div class="card card-accent"><h4>Ownership</h4><p class="dim">Por <b>Component</b> + Reopen trend + Aging. <span class="tag no">bloqueado: rellenar Components</span></p></div>
+    <div class="card card-accent"><h4>Salud general</h4><p class="dim">Gadgets: por <b>type</b>, por <b>status</b> (lifecycle slice), Escape Rate. <span class="tag ok">listo en ShopFlow</span></p></div>
+    <div class="card card-accent"><h4>Gravedad &amp; causa</h4><p class="dim">Pie por <b>Severity</b>, por <b>Root Cause</b>, por <b>Error Type</b>. <span class="tag ok">listo en ShopFlow</span></p></div>
+    <div class="card card-accent"><h4>Ownership</h4><p class="dim">Por <b>Component</b> + Reopen trend + Aging. <span class="tag ok">listo: Components al 100%</span></p></div>
   </div>
   <div class="callout mt-m"><h4>El objetivo final</h4><p>Una página donde el PO/PM abre Jira y, sin preguntar a nadie, <b>ve</b>: cuántas incidencias vivas, qué tan graves, qué parte de la app sufre, si el fix mejora. La gestión de incidencias se vuelve transparente.</p></div>
-  <div class="notes">Cerrar el arco: el dashboard NO es de pruebas (eso es otra presentación) — es de gestión de incidencias. Lo construible hoy en BK vs lo que exige higiene primero. Tres bloques: salud, gravedad/causa, ownership.</div>
+  <div class="notes">Cerrar el arco: el dashboard NO es de pruebas (eso es otra presentación) — es de gestión de incidencias. En ShopFlow los tres bloques se construyen enteros porque cada campo está relleno: salud, gravedad/causa, ownership.</div>
 </section>
 
-<!-- 31. QUIZ 3 -->
+<!-- 31. PRIMER — CÓMO LEER ESTOS GRÁFICOS -->
+<section class="slide" data-title="Cómo leer">
+  <p class="kicker">leyenda · antes del dashboard</p>
+  <h2 class="h2" data-anim="fade-up">Cómo Leer Estos Gráficos</h2>
+  <div class="grid g4 mt-s">
+
+    <div class="card chartcard tiny">
+      <div class="iconwrap">
+        <div class="donut mini" style="background:conic-gradient(var(--a1) 0 58%,var(--a2) 58% 84%,var(--a3) 84% 100%)"></div>
+      </div>
+      <h4>Donut / Pie</h4>
+      <p>Proporción de un total; las partes suman 100%. <b>"¿Cómo se reparte el total?"</b></p>
+    </div>
+
+    <div class="card chartcard tiny">
+      <div class="iconwrap">
+        <div class="minibars">
+          <span class="bt" style="width:100%"></span>
+          <span class="bt" style="width:64%;background:var(--a2)"></span>
+          <span class="bt" style="width:38%;background:var(--a3)"></span>
+        </div>
+      </div>
+      <h4>Barras</h4>
+      <p>Comparar la magnitud entre categorías. <b>"¿Cuál es mayor?"</b></p>
+    </div>
+
+    <div class="card chartcard tiny">
+      <div class="iconwrap">
+        <div class="stacked mini">
+          <div class="seg" style="width:45%;background:var(--good)"></div>
+          <div class="seg" style="width:30%;background:var(--warn)"></div>
+          <div class="seg" style="width:25%;background:#79c0ff"></div>
+        </div>
+      </div>
+      <h4>Barra apilada</h4>
+      <p>La composición de UN total dentro de una sola barra. <b>"¿De qué se compone esto?"</b></p>
+    </div>
+
+    <div class="card chartcard tiny">
+      <div class="iconwrap">
+        <div class="gauge mini">
+          <div class="garc" style="background:conic-gradient(from 270deg,var(--warn) 0 54deg,var(--surface-2) 54deg 180deg,transparent 180deg)"></div>
+          <div class="ghole"></div>
+        </div>
+      </div>
+      <h4>Gauge (medidor)</h4>
+      <p>Un valor único contra su máximo/meta (un %). <b>"¿Qué tan cerca del tope?"</b></p>
+    </div>
+
+  </div>
+  <table class="dtable mt-m" style="font-size:13.5px">
+    <thead><tr><th>Término</th><th>Qué es</th><th>Ejemplo en este dashboard</th></tr></thead>
+    <tbody>
+      <tr><td><b>Rate / Tasa</b></td><td>Proporción expresada de 0 a 100%</td><td>Escape Rate = fugados / total</td></tr>
+      <tr><td><b>Ratio</b></td><td>Relación entre dos cantidades</td><td>Rejection Ratio = ruido / total</td></tr>
+      <tr><td><b>Distribución</b></td><td>Cómo se reparte el conteo entre categorías</td><td>por Severity, por Root Cause…</td></tr>
+      <tr><td><b>Índice ponderado</b></td><td>Σ(peso × conteo) / total — no todo pesa igual</td><td>Severity Index: una crítica pesa más que una menor</td></tr>
+      <tr><td><b>Slice "Sin asignar"</b></td><td>La porción de datos faltantes; mostrarla = honestidad</td><td>si un campo quedara vacío iría aquí (muted) — en ShopFlow no aplica: todo relleno</td></tr>
+    </tbody>
+  </table>
+  <div class="notes">Slide-glosario: que nadie se pierda con donut/gauge/barra apilada antes de ver el dashboard. Idea clave a verbalizar: cada forma responde una pregunta distinta — proporción (donut), comparación (barras), composición (apilada), valor-contra-meta (gauge). El slice "Sin asignar" (muted) es el recurso honesto para cuando un campo queda vacío — pero en ShopFlow no aparece, porque todo está relleno. Los íconos son los mismos componentes CSS que verán a tamaño completo en los 3 dashboards siguientes.</div>
+</section>
+
+<!-- 32. DASHBOARD D1 — SALUD GENERAL -->
+<section class="slide" data-title="Dashboard · Salud">
+  <p class="kicker">dashboard en vivo · bloque 1/3 · ejemplo ShopFlow</p>
+  <h2 class="h2" data-anim="fade-up">Dashboard · Salud General</h2>
+  <div class="grid g3 mt-s">
+
+    <!-- chart 1: escape rate donut -->
+    <div class="card chartcard">
+      <div class="cq">¿Detenemos los defectos antes de que escapen a prod?</div>
+      <div class="cm">métrica · Defect Escape Rate</div>
+      <div class="chartwrap">
+        <div class="donut" style="background:conic-gradient(var(--warn) 0 28%,var(--good) 28% 100%)">
+          <div class="dlabel"><span class="dv" style="color:var(--good)">72%</span><span class="dn">contenido</span></div>
+        </div>
+      </div>
+      <div class="chartans"><b>Shift-left funciona: 72% se contiene en sprint</b> — Escape Rate 28%, sano.</div>
+    </div>
+
+    <!-- chart 2: type split donut -->
+    <div class="card chartcard">
+      <div class="cq">¿De qué se compone la familia de incidencias?</div>
+      <div class="cm">métrica · Type split (40 total)</div>
+      <div class="chartwrap">
+        <div class="donut" style="background:conic-gradient(var(--a1) 0 65%,var(--a2) 65% 90%,var(--a3) 90% 100%)">
+          <div class="dlabel"><span class="dv grad">40</span><span class="dn">incidencias</span></div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><span class="swatch" style="background:var(--a1)"></span>Defect<b>26</b></div>
+          <div class="legend-item"><span class="swatch" style="background:var(--a2)"></span>Bug<b>10</b></div>
+          <div class="legend-item"><span class="swatch" style="background:var(--a3)"></span>Improvement<b>4</b></div>
+        </div>
+      </div>
+      <div class="chartans"><b>Defects (26) &gt; Bugs (10): se caza antes de release.</b></div>
+    </div>
+
+    <!-- chart 3: status lifecycle stacked bar -->
+    <div class="card chartcard">
+      <div class="cq">¿En qué punto del ciclo están?</div>
+      <div class="cm">métrica · Status lifecycle (40 total)</div>
+      <div class="chartwrap">
+        <div class="stackwrap">
+          <div class="stacked">
+            <div class="seg" style="width:65%;background:var(--good);color:#03130b">65%</div>
+            <div class="seg" style="width:15%;background:var(--warn);color:#1a1303">15%</div>
+            <div class="seg" style="width:12.5%;background:#79c0ff;color:#04121f">12%</div>
+            <div class="seg" style="width:7.5%;background:var(--text-3);color:#0d1117">7%</div>
+          </div>
+          <div class="stacked-legend">
+            <div class="legend-item"><span class="swatch" style="background:var(--good)"></span>Closed<b>26</b></div>
+            <div class="legend-item"><span class="swatch" style="background:var(--warn)"></span>In Progress<b>6</b></div>
+            <div class="legend-item"><span class="swatch" style="background:#79c0ff"></span>Ready For QA<b>5</b></div>
+            <div class="legend-item"><span class="swatch" style="background:var(--text-3)"></span>Open<b>3</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="chartans"><b>26 cerradas; 14 vivas</b> avanzando por un flujo sano.</div>
+    </div>
+
+  </div>
+  <div class="notes">Bloque 1 del dashboard blueprint materializado, con la data completa de ShopFlow. Escape Rate (donut): 72% contenido en sprint, 28% escapa — shift-left sano. Type split: Defect domina (26 de 40) → se caza antes del release. Lifecycle (barra apilada): 26 Closed + 14 vivas (6 In Progress, 5 Ready For QA, 3 Open), todas en flujo normal. Los tres gadgets se dibujan enteros porque type y status están al 100%.</div>
+</section>
+
+<!-- 32. DASHBOARD D2 — GRAVEDAD & CAUSA -->
+<section class="slide" data-title="Dashboard · Gravedad">
+  <p class="kicker">dashboard en vivo · bloque 2/3 · ejemplo ShopFlow</p>
+  <h2 class="h2" data-anim="fade-up">Dashboard · Gravedad &amp; Causa</h2>
+  <div class="grid g3 mt-s">
+
+    <!-- chart 4: severity bars -->
+    <div class="card chartcard">
+      <div class="cq">¿Qué tan grave es lo que encontramos?</div>
+      <div class="cm">métrica · Severity dist. (40 total)</div>
+      <div class="chartwrap" style="align-items:stretch">
+        <div class="bars" style="margin-top:0;width:100%">
+          <div class="barrow" style="grid-template-columns:96px 1fr 30px"><span class="bl">Crítica</span><span class="bt" style="width:24%;background:var(--bad)"></span><span class="bn">4</span></div>
+          <div class="barrow" style="grid-template-columns:96px 1fr 30px"><span class="bl">Mayor</span><span class="bt" style="width:65%;background:var(--warn)"></span><span class="bn">11</span></div>
+          <div class="barrow" style="grid-template-columns:96px 1fr 30px"><span class="bl">Moderada</span><span class="bt" style="width:100%;background:#79c0ff"></span><span class="bn">17</span></div>
+          <div class="barrow" style="grid-template-columns:96px 1fr 30px"><span class="bl">Menor</span><span class="bt" style="width:47%;background:var(--good)"></span><span class="bn">8</span></div>
+        </div>
+      </div>
+      <div class="chartans"><b>Mayoría Moderada/Mayor; 4 críticas bajo control.</b></div>
+    </div>
+
+    <!-- chart 5: root cause pie -->
+    <div class="card chartcard">
+      <div class="cq">¿Por qué fallamos?</div>
+      <div class="cm">métrica · Root Cause (40 total)</div>
+      <div class="chartwrap">
+        <div class="pie" style="background:conic-gradient(var(--a1) 0 37.5%,var(--a2) 37.5% 60%,var(--a3) 60% 77.5%,#79c0ff 77.5% 92.5%,var(--good) 92.5% 100%)"></div>
+        <div class="legend">
+          <div class="legend-item"><span class="swatch" style="background:var(--a1)"></span>Lógica código<b>15</b></div>
+          <div class="legend-item"><span class="swatch" style="background:var(--a2)"></span>Req. ambiguo<b>9</b></div>
+          <div class="legend-item"><span class="swatch" style="background:var(--a3)"></span>Datos/config<b>7</b></div>
+          <div class="legend-item"><span class="swatch" style="background:#79c0ff"></span>Integración<b>6</b></div>
+          <div class="legend-item"><span class="swatch" style="background:var(--good)"></span>Validación<b>3</b></div>
+        </div>
+      </div>
+      <div class="chartans"><b>Lógica de código domina</b> → foco de mejora de proceso.</div>
+    </div>
+
+    <!-- chart 6: error type bars -->
+    <div class="card chartcard">
+      <div class="cq">¿Qué clase de fallas dominan?</div>
+      <div class="cm">métrica · Error Type (40 total)</div>
+      <div class="chartwrap" style="align-items:stretch">
+        <div class="bars" style="margin-top:0;width:100%">
+          <div class="barrow" style="grid-template-columns:96px 1fr 30px"><span class="bl">Funcional</span><span class="bt" style="width:100%;background:var(--a1)"></span><span class="bn">17</span></div>
+          <div class="barrow" style="grid-template-columns:96px 1fr 30px"><span class="bl">UI</span><span class="bt" style="width:53%;background:var(--a2)"></span><span class="bn">9</span></div>
+          <div class="barrow" style="grid-template-columns:96px 1fr 30px"><span class="bl">Validación</span><span class="bt" style="width:41%;background:#79c0ff"></span><span class="bn">7</span></div>
+          <div class="barrow" style="grid-template-columns:96px 1fr 30px"><span class="bl">Performance</span><span class="bt" style="width:29%;background:var(--warn)"></span><span class="bn">5</span></div>
+          <div class="barrow" style="grid-template-columns:96px 1fr 30px"><span class="bl">Seguridad</span><span class="bt" style="width:12%;background:var(--bad)"></span><span class="bn">2</span></div>
+        </div>
+      </div>
+      <div class="chartans"><b>Funcional domina; UI y validación siguen.</b></div>
+    </div>
+
+  </div>
+  <div class="notes">Bloque 2 del dashboard, con la data completa de ShopFlow — Severity, Root Cause y Error Type están al 100%, así que ninguna gráfica necesita slice "Sin asignar". Severity: mayoría Moderada (17) / Mayor (11), solo 4 críticas bajo control. Root Cause: lógica de código domina (15) → foco de mejora de proceso. Error Type: funcional domina (17), seguido de UI y validación.</div>
+</section>
+
+<!-- 33. DASHBOARD D3 — OWNERSHIP & PROCESO -->
+<section class="slide" data-title="Dashboard · Ownership">
+  <p class="kicker">dashboard en vivo · bloque 3/3 · ejemplo ShopFlow</p>
+  <h2 class="h2" data-anim="fade-up">Dashboard · Ownership &amp; Proceso</h2>
+  <div class="grid g3 mt-s">
+
+    <!-- chart 7: components populated -->
+    <div class="card chartcard">
+      <div class="cq">¿Qué parte de la app falla más?</div>
+      <div class="cm">métrica · Defectos por Component (40 total)</div>
+      <div class="chartwrap" style="align-items:stretch">
+        <div class="bars" style="margin-top:0;width:100%">
+          <div class="barrow" style="grid-template-columns:90px 1fr 30px"><span class="bl">Checkout</span><span class="bt" style="width:100%;background:var(--a1)"></span><span class="bn">11</span></div>
+          <div class="barrow" style="grid-template-columns:90px 1fr 30px"><span class="bl">Auth</span><span class="bt" style="width:73%;background:var(--a2)"></span><span class="bn">8</span></div>
+          <div class="barrow" style="grid-template-columns:90px 1fr 30px"><span class="bl">Search</span><span class="bt" style="width:64%;background:var(--a3)"></span><span class="bn">7</span></div>
+          <div class="barrow" style="grid-template-columns:90px 1fr 30px"><span class="bl">Cart</span><span class="bt" style="width:55%;background:#79c0ff"></span><span class="bn">6</span></div>
+          <div class="barrow" style="grid-template-columns:90px 1fr 30px"><span class="bl">Profile</span><span class="bt" style="width:45%;background:var(--warn)"></span><span class="bn">5</span></div>
+          <div class="barrow" style="grid-template-columns:90px 1fr 30px"><span class="bl">Notifications</span><span class="bt" style="width:27%;background:var(--good)"></span><span class="bn">3</span></div>
+        </div>
+      </div>
+      <div class="chartans"><b>Checkout y Auth concentran los defectos</b> → dónde reforzar.</div>
+    </div>
+
+    <!-- chart 8: reopen rate gauge -->
+    <div class="card chartcard">
+      <div class="cq">¿Qué tan bueno es el fix? (¿reabrimos?)</div>
+      <div class="cm">métrica · Reopen Rate</div>
+      <div class="chartwrap">
+        <div class="gauge">
+          <div class="garc" style="background:conic-gradient(from 270deg,var(--good) 0 14deg,var(--surface-2) 14deg 180deg,transparent 180deg)"></div>
+          <div class="ghole"></div>
+          <div class="gval" style="color:var(--good)">8%</div>
+          <div class="gsub">2 reabiertos / 26 cerrados</div>
+        </div>
+      </div>
+      <div class="chartans"><b>Solo 8% se reabre: fixes sólidos.</b></div>
+    </div>
+
+    <!-- chart 9: rejection ratio donut -->
+    <div class="card chartcard">
+      <div class="cq">¿Cuánto ruido genera el reporte?</div>
+      <div class="cm">métrica · Rejection Ratio (40 total)</div>
+      <div class="chartwrap">
+        <div class="donut" style="background:conic-gradient(var(--warn) 0 7.5%,var(--good) 7.5% 100%)">
+          <div class="dlabel"><span class="dv" style="color:var(--good)">7%</span><span class="dn">ruido</span></div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><span class="swatch" style="background:var(--warn)"></span>Dup + REJ<b>3</b></div>
+          <div class="legend-item"><span class="swatch" style="background:var(--good)"></span>Señal<b>37</b></div>
+        </div>
+      </div>
+      <div class="chartans"><b>7% de ruido: reportes limpios</b> (2 duplicados + 1 rechazado).</div>
+    </div>
+
+  </div>
+  <div class="notes">Bloque 3 del dashboard, con la data completa de ShopFlow. Components (gráfico 1) se dibuja entero: Checkout (11) y Auth (8) concentran los defectos → ahí reforzar testing y ownership. Reopen Rate (gauge): 2/26 = 8%, fixes sólidos. Rejection Ratio (donut): 3 descartados (2 Duplicated + 1 REJECTED) = 7% de ruido → reportes limpios. Cierra el arco: los tres gadgets viven porque el equipo rellenó todos sus campos.</div>
+</section>
+
+<!-- 34. QUIZ 3 -->
 <section class="slide" data-title="Quiz 3">
   <p class="kicker">quiz · parte 3</p>
   <h2 class="h2" data-anim="fade-up">Métricas &amp; Dashboards</h2>
@@ -1059,16 +1370,16 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
       <div class="qexp"><b>Defect Escape Rate.</b> La proporción Bug/Defect mide exactamente la fuga, porque Defect=en sprint y Bug=post-release. Es la métrica núcleo del shift-left.</div>
     </div>
     <div class="qitem">
-      <div class="qq"><span class="qn">Q2</span><span>En BK, ¿cuál de estos dashboards NO se puede construir de forma fiable hoy?</span></div>
+      <div class="qq"><span class="qn">Q2</span><span>El equipo de producto abre el dashboard de ShopFlow y pregunta "¿qué parte de la app concentra más defectos?". ¿Qué módulo lidera?</span></div>
       <div class="opts">
-        <div class="opt"><span class="mk">A</span><span>Incidencias por status</span></div>
-        <div class="opt"><span class="mk">B</span><span>Incidencias por root cause</span></div>
-        <div class="opt" data-correct="1"><span class="mk">C</span><span>Incidencias por componente</span></div>
+        <div class="opt" data-correct="1"><span class="mk">A</span><span>Checkout (11 defectos)</span></div>
+        <div class="opt"><span class="mk">B</span><span>Notifications (3 defectos)</span></div>
+        <div class="opt"><span class="mk">C</span><span>No se puede saber: falta rellenar Components</span></div>
       </div>
-      <div class="qexp"><b>Por componente.</b> Solo 1 de 33 incidencias tiene Components relleno (3%). El gráfico saldría vacío. Status (100% implícito) y Root Cause (79%) sí son fiables.</div>
+      <div class="qexp"><b>Checkout (11).</b> Como ShopFlow rellena Components en las 40 incidencias, el gráfico de ownership se dibuja entero: Checkout y Auth (8) lideran → ahí reforzar. Si el campo estuviera vacío, la respuesta sería C — pero esa es exactamente la disciplina que este equipo no descuidó.</div>
     </div>
   </div>
-  <div class="notes">Conecta las ideas clave de la parte 3: escape rate como métrica estrella y la higiene de campos (Components 1/33). Una métrica más para nombrar: si muchos tickets se reabren vía "back" tras cerrarse, eso es Reopen Rate alto = fixes que no resolvieron de verdad, señal de calidad de desarrollo, no de QA (ver slide 28).</div>
+  <div class="notes">Conecta las ideas clave de la parte 3: escape rate como métrica estrella (28% sano) y el pago de la higiene de campos (Components al 100% → dashboard de ownership legible, Checkout lidera). Una métrica más para nombrar: si muchos tickets se reabren vía "back" tras cerrarse, eso es Reopen Rate alto = fixes que no resolvieron de verdad — en ShopFlow es solo 8% (ver slide 28).</div>
 </section>
 
 <!-- 32. BEST PRACTICES -->
@@ -1098,7 +1409,7 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
   <h2 class="h2" data-anim="fade-up">Tres Ideas que se Quedan</h2>
   <div class="steps s3 mt-l">
     <div class="step"><div class="num">1</div><h4>El momento define el tipo</h4><p>Bug = defecto = síntoma idéntico. Lo que cambia es cuándo nace y qué le dice al equipo. Defect contiene; Bug se fuga; Improvement mejora.</p></div>
-    <div class="step"><div class="num">2</div><h4>Un workflow, los mismos campos</h4><p>Estándar UPEX: las tres incidencias comparten esquema. La disciplina al rellenar — sobre todo Components — es la materia prima de toda métrica.</p></div>
+    <div class="step"><div class="num">2</div><h4>Un workflow, los mismos campos</h4><p>El estándar de calidad: las tres incidencias comparten esquema. La disciplina al rellenar — sobre todo Components — es la materia prima de toda métrica.</p></div>
     <div class="step"><div class="num">3</div><h4>Mide preguntas, no datos</h4><p>Un dashboard es un set de respuestas. Pregunta primero, métrica después, campo al final. Escape Rate es la estrella del shift-left.</p></div>
   </div>
   <div class="notes">El cierre de los tres conceptos. Si el público recuerda solo tres cosas, que sean estas.</div>
@@ -1115,6 +1426,22 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
 </section>
 
 </div>
+
+<!-- PART B :: score chip + keyboard-nav hint (ported from coding-classes/playwright-pro) -->
+<div id="score-chip">⭐ 0/6</div>
+<div id="help-hint">← → navegar · O resumen · S presentador · N notas · F pantalla · T tema</div>
+<style id="upex-chip-hint-style">
+#score-chip{position:fixed;top:18px;right:24px;z-index:60;font-family:'JetBrains Mono','IBM Plex Mono',monospace;
+  font-size:14px;font-weight:700;background:var(--surface-2);border:1px solid var(--border-strong);
+  border-radius:999px;padding:6px 15px;color:var(--accent);box-shadow:var(--shadow);transition:transform .25s var(--ease)}
+#score-chip.bump{transform:scale(1.25)}
+#help-hint{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:60;pointer-events:none;
+  font-family:'JetBrains Mono','IBM Plex Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--text-3)}
+@media (max-width:768px){#help-hint{display:none}#score-chip{top:8px;right:10px;font-size:11px;padding:4px 10px;box-shadow:none}}
+@media (pointer:coarse){#help-hint{display:none}}
+@media print{#score-chip,#help-hint{display:none!important}}
+</style>
+
 <script>
 /* html-ppt :: runtime.js
  * Keyboard-driven deck runtime. Zero dependencies.
@@ -1422,7 +1749,7 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
     /* Opens a new window with 4 draggable, resizable cards:
      *   CURRENT  — iframe(?preview=N)   pixel-perfect preview of current slide
      *   NEXT     — iframe(?preview=N+1) pixel-perfect preview of next slide
-     *   SCRIPT   — large speaker notes (逐字稿)
+     *   SCRIPT   — large speaker notes (Guion)
      *   TIMER    — elapsed timer + page counter + controls
      * Cards remember position/size in localStorage.
      * Two windows sync via BroadcastChannel.
@@ -1454,7 +1781,7 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
 
       presenterWin = window.open('', 'html-ppt-presenter', 'width=1280,height=820,menubar=no,toolbar=no');
       if (!presenterWin) {
-        alert('请允许弹出窗口以使用演讲者视图');
+        alert('Permite las ventanas emergentes para usar la vista de presentador');
         return;
       }
       presenterWin.document.open();
@@ -1657,7 +1984,7 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
   <div class="pcard pcard-notes" id="card-notes" style="--dot-color:#f0883e">
     <div class="pcard-head" data-drag>
       <span class="pcard-dot"></span>
-      <span class="pcard-title">SPEAKER SCRIPT · 逐字稿</span>
+      <span class="pcard-title">SPEAKER SCRIPT · Guion</span>
     </div>
     <div class="pcard-body" id="notes-body"></div>
     <div class="pcard-resize" data-resize></div>
@@ -1685,11 +2012,11 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
 </div>
 
 <div class="hint-bar">
-  <span><kbd>← →</kbd> 翻页</span>
-  <span><kbd>R</kbd> 重置计时</span>
-  <span><kbd>Esc</kbd> 关闭</span>
-  <span style="color:#6e7681">拖动卡片头部移动 · 拖动右下角调整大小</span>
-  <button class="reset-layout" id="reset-layout">重置布局</button>
+  <span><kbd>← →</kbd> Pasar diapositiva</span>
+  <span><kbd>R</kbd> Reiniciar tiempo</span>
+  <span><kbd>Esc</kbd> Cerrar</span>
+  <span style="color:#6e7681">Arrastra el encabezado para mover · Arrastra la esquina inferior derecha para redimensionar</span>
+  <button class="reset-layout" id="reset-layout">Reiniciar disposición</button>
 </div>
 
 <script>
@@ -1905,7 +2232,7 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
 
     /* Notes */
     var note = slideMeta[n].notes;
-    notesBody.innerHTML = note || '<span class="empty">（这一页还没有逐字稿）</span>';
+    notesBody.innerHTML = note || '<span class="empty">(Esta diapositiva aún no tiene guion)</span>';
 
     /* Timer count */
     timerCount.textContent = (n + 1) + ' / ' + total;
@@ -1947,7 +2274,7 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
   document.getElementById('btn-next').addEventListener('click', function(){ go(idx + 1); });
   document.getElementById('btn-reset').addEventListener('click', resetTimer);
   document.getElementById('reset-layout').addEventListener('click', function(){
-    if (confirm('恢复默认卡片布局？')) {
+    if (confirm('¿Restaurar la disposición por defecto?')) {
       try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
       applyLayout(defaultLayout());
     }
@@ -1979,7 +2306,7 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
   iframeCur.src = deckUrl + '?preview=' + (idx + 1);
   if (idx + 1 < total) iframeNxt.src = deckUrl + '?preview=' + (idx + 2);
   /* Initialize notes/timer/count without touching iframes */
-  notesBody.innerHTML = slideMeta[idx].notes || '<span class="empty">（这一页还没有逐字稿）</span>';
+  notesBody.innerHTML = slideMeta[idx].notes || '<span class="empty">(Esta diapositiva aún no tiene guion)</span>';
   curMeta.textContent = (idx + 1) + '/' + total;
   nxtMeta.textContent = (idx + 2) + '/' + total;
   timerCount.textContent = (idx + 1) + ' / ' + total;
@@ -2079,24 +2406,6 @@ h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
 
 </script>
 <script>
-/* defect-management :: interactive quiz — click to answer, reveals correct + explanation */
-(function(){
-  document.addEventListener('click', function(e){
-    var opt = e.target.closest ? e.target.closest('.opt') : null;
-    if(!opt) return;
-    var item = opt.closest('.qitem');
-    if(!item || item.classList.contains('answered')) return;
-    item.classList.add('answered');
-    var opts = item.querySelectorAll('.opt');
-    for(var i=0;i<opts.length;i++){
-      if(opts[i].dataset.correct) opts[i].classList.add('reveal-correct');
-    }
-    opt.classList.remove('reveal-correct');
-    opt.classList.add(opt.dataset.correct ? 'correct' : 'wrong');
-  }, true);
-})();
-</script>
-<script>
 /* deck :: mobile scale-to-fit — fixed 16:9 layout scaled into narrow/short viewports.
    Desktop (vw>=1024 && vh>=640) is left untouched (native fluid). Preview iframes skipped. */
 (function(){
@@ -2175,6 +2484,68 @@ if(force||(isMobile&&!seen)){
   document.body.appendChild(h);
   setTimeout(close,5000);
 }
+})();
+</script>
+
+<!-- ============ PART B :: QUIZ SCORE ENGINE (accumulating + localStorage) ============
+     Ported from test-automation/playwright-pro.es.html (quiz engine + score chip +
+     bump animation + localStorage persistence). Adapted to this deck's .qitem markup:
+     each .qitem locks on first answer, reveals .qexp, the running score accumulates in
+     the #score-chip and survives reloads via localStorage. -->
+<script id="upex-quiz-engine">
+(function(){
+'use strict';
+function init(){
+  var qitems = Array.prototype.slice.call(document.querySelectorAll('.qitem'));
+  if(!qitems.length) return;
+  var TOTAL = qitems.length;
+  var chip = document.getElementById('score-chip');
+  var KEY = 'defect-management-quiz:' + location.pathname;
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch(e){ state = {}; }
+  var score = 0;
+
+  function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+  function recount(){ score = 0; for(var k in state){ if(state[k] === 'correct') score++; } }
+  function updateChip(){
+    if(!chip) return;
+    chip.textContent = '⭐ ' + score + '/' + TOTAL;
+    chip.classList.remove('bump'); void chip.offsetWidth; chip.classList.add('bump');
+  }
+  function correctOpt(qi){
+    var opts = qi.querySelectorAll('.opt');
+    for(var i=0;i<opts.length;i++){ if(opts[i].getAttribute('data-correct') === '1') return opts[i]; }
+    return null;
+  }
+  function lock(qi, clickedOpt, ok){
+    qi.classList.add('answered');
+    var co = correctOpt(qi);
+    if(ok){
+      (clickedOpt || co || {classList:{add:function(){}}}).classList.add('correct');
+    } else {
+      if(clickedOpt) clickedOpt.classList.add('wrong');
+      if(co) co.classList.add('reveal-correct');
+    }
+  }
+
+  qitems.forEach(function(qi, i){
+    var id = 'q' + i;
+    if(state[id]) lock(qi, null, state[id] === 'correct');   // replay saved answers
+    Array.prototype.forEach.call(qi.querySelectorAll('.opt'), function(opt){
+      opt.addEventListener('click', function(){
+        if(qi.classList.contains('answered')) return;          // one shot per question
+        var ok = opt.getAttribute('data-correct') === '1';
+        state[id] = ok ? 'correct' : 'wrong';
+        lock(qi, opt, ok);
+        persist(); recount(); updateChip();
+      });
+    });
+  });
+
+  recount(); updateChip();
+}
+if(document.readyState !== 'loading') init();
+else document.addEventListener('DOMContentLoaded', init);
 })();
 </script>
 

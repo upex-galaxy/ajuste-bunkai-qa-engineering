@@ -3,17 +3,17 @@
   "templateRepo": "upex-galaxy/agentic-qa-boilerplate",
   "templateCommit": "6a751463e1445a8466bac3540fc9409d6f883965",
   "perComponentCommit": {
-    "skills": "db7ed7055b2734372d33cfbe83167d2c7c89e85d",
-    "commands": "6a751463e1445a8466bac3540fc9409d6f883965",
+    "skills": "e6308736aeb99e0511f18219602a8747261a199d",
+    "commands": "e6308736aeb99e0511f18219602a8747261a199d",
     "scripts": "db7ed7055b2734372d33cfbe83167d2c7c89e85d",
-    "docs": "db7ed7055b2734372d33cfbe83167d2c7c89e85d",
+    "docs": "e6308736aeb99e0511f18219602a8747261a199d",
     "cli": "6a751463e1445a8466bac3540fc9409d6f883965",
     "vscode": "6a751463e1445a8466bac3540fc9409d6f883965",
     "husky": "db7ed7055b2734372d33cfbe83167d2c7c89e85d",
     "agents-docs": "6e3e33bf874838b049406728ab1ff3bec351149f",
     "claude-config": "6a751463e1445a8466bac3540fc9409d6f883965",
     "tooling": "6a751463e1445a8466bac3540fc9409d6f883965",
-    "env-template": "6a751463e1445a8466bac3540fc9409d6f883965"
+    "env-template": "e6308736aeb99e0511f18219602a8747261a199d"
   },
   "syncedComponents": [],
   "ignoreFileSync": {
@@ -55,6 +55,6 @@
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-06-27T23:10:20.317Z",
+  "lastSyncedAt": "2026-07-01T19:40:51.079Z",
   "variableSystemVersion": 1
 }

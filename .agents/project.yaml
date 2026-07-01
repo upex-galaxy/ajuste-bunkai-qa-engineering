@@ -72,3 +72,18 @@ environments:
     api_url: 'https://staging-upexbunkai.vercel.app/api' # API base URL for staging env (e.g. https://api-staging.myproject.com)
     db_mcp: staging-dbhub # MCP server name for staging DB (e.g. myproject-staging-db)
     api_mcp: staging-openapi # MCP server name for staging API (e.g. myproject-staging-api)
+
+git_strategy:
+  strategy: solo-main
+  branches:
+    production: main
+    integration: null
+    ephemeral_pattern: null
+  decisions:
+    promote_method: n/a
+    feature_merge: n/a
+    hotfix_policy: n/a
+  policy:
+    direct_push_to_protected: confirm
+    admin_bypass: false
+    require_pr_reviews: null
