@@ -54,9 +54,9 @@
 ## Metadata
 
 - **Created:** 5/29/2026
-- **Updated:** 6/15/2026
+- **Updated:** 6/30/2026
 - **Reporter:** Ely
-- **Assignee:** Andrés Daniel Cumare Morales
+- **Assignee:** Juan Ignacio Marmo
 
 ---
 

@@ -43,7 +43,7 @@ As a QA Lead, I want each user story to show how long it took to go from its fir
 - **Created:** 6/1/2026
 - **Updated:** 6/30/2026
 - **Reporter:** Ely
-- **Assignee:** Unassigned
+- **Assignee:** Juan Ignacio Marmo
 - **Labels:** new-feature
 
 ---

@@ -121,7 +121,7 @@ The user opens Project settings, picks ***Import from Jira***, enters a JQL, and
 ## Metadata
 
 - **Created:** 5/20/2026
-- **Updated:** 6/22/2026
+- **Updated:** 7/1/2026
 - **Reporter:** Ely
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** integration, jira-import, mvp, shift-left-2026-05-27, shift-left-reviewed, wave-2

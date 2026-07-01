@@ -82,7 +82,7 @@
 ## Metadata
 
 - **Created:** 5/20/2026
-- **Updated:** 6/9/2026
+- **Updated:** 7/1/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** mvp, shift-left-2026-05-27, shift-left-reviewed, tenancy, wave-1

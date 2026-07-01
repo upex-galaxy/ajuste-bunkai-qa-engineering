@@ -111,7 +111,7 @@ Se produjeron 13 Gherkin scenarios (Happy 2 / Negative 7 / Boundary 2 / Integrat
 
 - [BK-15](https://jira.upexgalaxy.com/browse/BK-15): TMS-AC | Manage criteria under a user story _(QA Approved)_
 - [BK-19](https://jira.upexgalaxy.com/browse/BK-19): TMS-ATC Builder | Build an ATC with ordered steps and assertions _(QA Approved)_
-- [BK-20](https://jira.upexgalaxy.com/browse/BK-20): TMS-ATC Search | Search and autocomplete ATCs _(Ready For QA)_
+- [BK-20](https://jira.upexgalaxy.com/browse/BK-20): TMS-ATC Search | Search and autocomplete ATCs _(BLOCKED)_
 - [BK-23](https://jira.upexgalaxy.com/browse/BK-23): TMS-ATC Duplicate | Duplicate an ATC with steps and assertions _(BLOCKED)_
 - [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(QA Approved)_
 - [BK-21](https://jira.upexgalaxy.com/browse/BK-21): TMS-ATC Propagation | Cascade ATC edits to all tests _(In Test)_
@@ -126,7 +126,7 @@ Se produjeron 13 Gherkin scenarios (Happy 2 / Negative 7 / Boundary 2 / Integrat
 ## Metadata
 
 - **Created:** 5/20/2026
-- **Updated:** 6/30/2026
+- **Updated:** 7/1/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** api, atc, backend, mvp, shift-left-2026-05-27, shift-left-reviewed, wave-2

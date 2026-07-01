@@ -58,7 +58,7 @@
 - **Created:** 5/29/2026
 - **Updated:** 6/30/2026
 - **Reporter:** Ely
-- **Assignee:** Nahuel Gomez
+- **Assignee:** Juan Leites
 - **Labels:** shift-left-2026-06-23, shift-left-reviewed
 
 ---
