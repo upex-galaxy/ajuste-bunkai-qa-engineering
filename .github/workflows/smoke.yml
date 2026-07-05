@@ -1,31 +1,34 @@
 # ============================================
-# KATA Architecture - Smoke Test Pipeline
+# KATA Architecture - Smoke Test Pipeline (DISABLED)
 # ============================================
 # Purpose: Daily health check running only @critical tagged tests.
 # Perfect for verifying app components work after deployments and releases.
+# DISABLED: No @critical tests exist yet. Re-enable triggers above when ready.
 
-name: Smoke Tests
+name: Smoke Tests (DISABLED)
 run-name: ${{ github.actor }} triggered Smoke Tests on ${{ github.event.inputs.environment || 'staging' }}
 
+# DISABLED: Re-enable when smoke tests with @critical tag exist.
+# Uncomment the blocks below to activate.
 on:
-  schedule:
-    - cron: '0 2 * * *' # Runs daily at 2:00 AM UTC
+  # schedule:
+  #   - cron: '0 2 * * *' # Runs daily at 2:00 AM UTC
 
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: Select the Test Environment
-        required: true
-        default: 'staging'
-        type: choice
-        options:
-          - local
-          - staging
-      generate_allure:
-        description: Generate Allure Report
-        required: true
-        default: true
-        type: boolean
+  # workflow_dispatch:
+  #   inputs:
+  #     environment:
+  #       description: Select the Test Environment
+  #       required: true
+  #       default: 'staging'
+  #       type: choice
+  #       options:
+  #         - local
+  #         - staging
+  #     generate_allure:
+  #       description: Generate Allure Report
+  #       required: true
+  #       default: true
+  #       type: boolean
 
 env:
   CI: true
