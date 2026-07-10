@@ -57,14 +57,14 @@
 
 ### Story (1)
 
-- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(QA Approved)_
+- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(Ready For Release)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/20/2026
-- **Updated:** 6/29/2026
+- **Updated:** 7/7/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** atc, clone, mvp, wave-2

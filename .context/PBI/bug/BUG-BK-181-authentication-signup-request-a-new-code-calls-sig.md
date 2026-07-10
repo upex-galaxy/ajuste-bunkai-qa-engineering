@@ -47,7 +47,7 @@ On the email-verification screen of BK-166's signup flow, the "Request a new cod
 ## Metadata
 
 - **Created:** 6/25/2026
-- **Updated:** 6/26/2026
+- **Updated:** 7/7/2026
 - **Reporter:** Benjamin Segovia
 - **Assignee:** Benjamin Segovia
 - **Labels:** auth, bug, exploratory-testing

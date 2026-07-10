@@ -88,9 +88,9 @@ Bearer callers with valid workspace membership and `run:execute` should resolve 
 ## Metadata
 
 - **Created:** 6/26/2026
-- **Updated:** 6/26/2026
+- **Updated:** 7/7/2026
 - **Reporter:** jesusgpythondev
-- **Assignee:** jesusgpythondev
+- **Assignee:** Ely
 - **Labels:** bk-39-follow-up, pat, run-creation, workspace-resolution
 
 ---
