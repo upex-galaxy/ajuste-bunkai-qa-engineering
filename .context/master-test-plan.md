@@ -1,312 +1,315 @@
-# Master Test Plan — Bunkai (upex-bunkai-tms)
-
-> What to test in this system, and why | Generated: 2026-06-20
-
 ```
-╔══════════════════════════════════════════════════════════════╗
-║                    BUNKAI — Master Test Plan                ║
-║  "Decomposes user stories into executable ATCs"             ║
-║  Pre-MVP · Testing Maturity: 0/4 · Zero automated tests    ║
-╚══════════════════════════════════════════════════════════════╝
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║              BUNKAI — Master Test Plan                         ║
+  ║        What to test in this system, and why it matters         ║
+  ╚══════════════════════════════════════════════════════════════════╝
 ```
 
----
+## Executive Risk Map
 
-## 1. Executive risk map
-
-Bunkai is a pre-MVP greenfield project with 0% test coverage, 26 open bugs, and incomplete PAT scope enforcement. The biggest risk is that its core invite-and-workspace integrity does not hold (BK-60/61/62 — duplicate invites, role overwrite), followed by a PAT security leak (BK-117/134 — `workspace:admin` self-issuable by members). Everything else is isolated CRUD — important, but the blast radius is narrower.
+Bunkai's core value is **test case integrity** — ATCs must be created, updated, searched, and status-tracked without data loss or corruption. The most fragile areas are the **RPC-powered write paths** (ATC create/update, module move/archive, AC rebalancing) because they bundle multiple mutations in a single DB transaction with business-rule enforcement. Auth/authorization is the second-critical zone: dual auth modes (cookie + PAT) with RLS-only authorization means a single policy mistake exposes all data. The Jira import path is lower business risk because it's async and isolated, but its error-handling surface is large.
 
 | Priority | Flow | Why it matters | Depends on / Affects |
 |----------|------|----------------|----------------------|
-| CRITICAL | Workspace invites & roles | Data integrity — duplicate invites and role overwrite (BK-60/61/62) can give any invitee admin access or lock out legit users | Auth, workspace membership, all gated features |
-| CRITICAL | PAT scope enforcement | Security — BK-117/134 lets member-role users self-issue `workspace:admin` tokens, bypassing RLS | All API routes (bearer auth) |
-| CRITICAL | Auth & session management | Everything is gated behind auth — if magic-link or PAT auth breaks, the system is unreachable | Every feature |
-| HIGH | Module hierarchy operations | BK-57 (rename+move not atomic), BK-67 (depth >=5 toast suppressed), BK-68 (1-char names) — data corruption risk | Projects, user stories, ATCs |
-| HIGH | ATC authoring (create + edit) | Core value proposition — BK-96 (PATCH returns 412), optimistic locking version drift | Tests, runs, traceability |
-| HIGH | Jira import | BK-142 (staging credentials missing) — async import can partially fail without alert | User stories, modules |
-| MEDIUM | User story ready-to-test gate | Serialized lock (`set_user_story_ready_to_test`) — concurrent calls could bypass AC requirement | ATCs, traceability |
-| MEDIUM | Markdown editor validation | BK-99 (50KB limit not enforced), BK-100 (90% warning not implemented) — server-side bypass | User story descriptions |
-| LOW | API docs (Scalar) | Cosmetic — stale OpenAPI spec only matters if consumers rely on it | Developer/QA tooling |
+| CRITICAL | ATC Create & Update | Data integrity loss corrupts the core entity. Silent failures in RPC transactions cause partial saves (steps but no assertions, ACs but no ATC). | Auth, Module tree, User Stories, ACs |
+| CRITICAL | Auth & Authorization | Both auth channels collapse to the same RLS-gated Postgres client. A broken RLS policy exposes ALL workspaces. A broken session/PAT handler locks out ALL users. | EVERY flow |
+| CRITICAL | Module Tree CRUD | Soft-delete cascades can orphan stories/ACs/ATCs. Rename rebuilds paths for entire subtrees — one bad UPDATE breaks navigation. Move with cycle-miss can corrupt the tree. | ATCs, User Stories, Project structure |
+| HIGH | AC Management (create/move/delete) | Last-AC-revert auto-demotes stories. Negative-parking rebalance bugs cause position conflicts on concurrent writes. | User Stories, ATC anchoring, ready_to_test gate |
+| HIGH | Workspace Membership & Invites | Role escalation (viewer → admin) or status bypass (suspended → active) leaks data. No-demotion rule on invite accept can be bypassed. | All workspace data |
+| HIGH | Dual Auth Parity (Cookie + PAT) | PAT issuance is browser-only. PAT-scope enforcement (atc:write, etc.) in RPCs. A bug here lets CLI agents escalate privileges. | ATC CRUD, Import, Workspace admin |
+| MEDIUM | Jira Import | Async, one-per-project. Edge cases: JQL parse failures, rate limits, partial imports, ADF conversion loss. | User Stories, ACs (append-only) |
+| MEDIUM | Activity Log / Audit Trail | Immutable log — no delete. Bugs that skip activity_log insertion lose forensic traceability. | Compliance, debugging |
 
 ---
 
-## 2. What to test first and why
+## What to Test First and Why
 
-### CRITICAL — Workspace invites & roles (FEAT-WS-002)
+### 1. ATC Create & Update (CRITICAL)
 
-**Why it matters**: BK-60 (no email uniqueness against active members), BK-61 (no check against pending invites), and BK-62 (role overwrite via upsert) mean invite integrity is broken. A member-role user who accepts an admin's invite can be demoted by the upsert. A bad actor can send duplicate invites to exhaust tokens.
+**Why it matters:** The ATC is Bunkai's core entity. If a QA engineer creates an ATC and steps are lost, or an ATC is saved without AC bindings, the system has failed its primary purpose. Worse: silent partial saves (RPC inserts ATC row but fails on children) are data corruption you don't notice until test-execution time.
 
-**What commonly breaks**:
-- `POST /workspaces/[id]/invites` with same email as an active member → creates duplicate invite (should reject)
-- `POST /workspaces/[id]/invites` with same email as a pending invite → creates second invite (should return existing)
-- Accepting an invite as viewer when workspace already has a member-role record → upsert overwrites role to whatever the invite says (BK-62)
-- Rotating an invite that was already accepted → should error, currently might succeed
-- Invite token expiry not enforced on accept
+**What commonly breaks:**
+- RPC transaction partially fails — ATC row created but steps/assertions/AC bindings missing
+- Optimistic-lock version mismatch causes silent overwrite (PATCH without `X-If-Match` succeeds when it should reject)
+- AC validation passes for ACs outside the User Story's scope (anchoring moat violation)
+- Slug collision on concurrent create (unique constraint catches this — but the transaction then rolls back the whole thing, user sees 500)
+- Module-path derivation fails when module was renamed concurrently (stale path in slug)
 
-**Dependencies**: Auth (caller must be workspace admin), workspace existence
+**Dependencies:** Auth (user must be workspace member with `atc:write`), Module tree (module must exist), User Stories (story must be in `ready_to_test` status — or should it? Check if draft stories allow ATC creation).
 
-**What an experienced QA would check**:
-- Invite the same email twice — second should 409. Then invite someone who is already a member — should 409.
-- As admin, invite as "viewer". As the invitee, accept. Then check `workspace_members.role` is "viewer" (not overwritten). Then have a different admin invite that same user as "admin" and re-accept — verify role is still "viewer" (should require explicit leave-first).
-- Try to invite as a non-admin (member) — should 403. Try to invite from outside the workspace — 403.
-- Accept an expired invite token — should fail with 410 Gone.
+**What an experienced QA would check:**
+- Create an ATC with 5 steps and 3 assertions, then GET it — verify all children returned in order
+- Create 2 ATCs concurrently targeting the same module → both succeed with unique slugs
+- PATCH with a stale version → 409 Conflict, not silent overwrite
+- PATCH with valid version → children are fully replaced (old steps gone, new steps appear)
+- Create without atc:write scope token → 403
+- Create with ACs from a different User Story → 422 with clear error
+- Delete (archive) an ATC → GET returns 404, admin query shows archived_at set
 
-### CRITICAL — PAT scope enforcement (FEAT-AUTH-002)
+### 2. Auth & Authorization (CRITICAL)
 
-**Why it matters**: BK-117 and BK-134 confirm that any authenticated user (including `member` role) can issue a PAT with `workspace:admin` scope. This defeats RLS — a bearer token with admin scope can call admin-gated endpoints without being an admin member.
+**Why it matters:** Auth is the single gate to everything. Since Bunkai uses RLS as its ONLY authorization layer (no TS-level guard), a typo in an RLS policy leaks data across workspaces. And because cookie sessions and PAT tokens both collapse to the same `Principal` + Supabase client, a flaw in `resolveIdentity()` bypasses both.
 
-**What commonly breaks**:
-- `POST /api/v1/tokens` as member-role user with `scopes: ["workspace:admin"]` → should 403, currently issues the token
-- Using that `workspace:admin` PAT to invite new members, delete modules, access other workspaces
-- Token revocation not actually enforced at the middleware level
-- Scope filtering in `resolveIdentity()` — the `auth.scopes` field in `GET /me` response might lie
+**What commonly breaks:**
+- RLS policy for `workspace_members` uses wrong workspace_id column → cross-tenant data leak
+- `resolveIdentity()` fails for PAT tokens after DB secret rotation (token verification uses SHA-256 hash in sibling table)
+- PAT tokens issued via cookie still work after explicit revocation (revoked_at check missed in RLS)
+- Magic link tokens consumed twice (replay — the `consumed_at` check in the sibling table might not be atomic)
+- PAT issuance via PAT (forbidden) — a CLI agent calling POST /tokens gets 403
 
-**Dependencies**: Auth middleware, PAT minting logic
+**Dependencies:** Everything.
 
-**What an experienced QA would check**:
-- As a member-role user (not admin), POST a token with `workspace:admin` — expect 403, confirm it 200s (bug confirmed)
-- Then use that token to call admin-gated endpoints — expect 403, confirm what actually happens
-- Revoke the token, then use it again — should 401
-- Create a token with no scopes — should 422. With `atc:read` only — confirm it cannot POST ATCs (403)
+**What an experienced QA would check:**
+- User A's PAT cannot read User B's workspace data across any endpoint
+- Revoke PAT → immediate 401 on next request with that token
+- Sign in, create PAT, sign out, use PAT → works (PAT is independent of session)
+- Magic link consumed → second use returns error (not success)
+- PAT with `atc:read` only → PATCH /atcs/{id} returns 403
+- Workspace member = `viewer` → POST /modules returns 403
 
-### CRITICAL — Auth & session management (FEAT-AUTH-001)
+### 3. Module Tree CRUD (CRITICAL)
 
-**Why it matters**: If users cannot sign up, sign in, or maintain a session, the entire application is dead. Two auth paths exist (cookie + PAT) and regression BK-84 confirms PAT auth was broken on staging at least once.
+**Why it matters:** The module tree is the organizational backbone. Everything nests under it. Corrupt the tree and you orphan stories, ACs, and ATCs — or worse, you show QA engineers the wrong structure and they write tests in the wrong module.
 
-**What commonly breaks**:
-- Magic-link email never arrives (Resend delivery failure, Supabase rate limit hit: 4/hour/email on free tier)
-- Session cookie not refreshed by middleware → redirect loop on `/projects`
-- PAT bearer rejected on endpoints that worked before (BK-84 — middleware regression)
-- Signup creates user but fails to create first workspace (bootstrap trigger race)
-- Callback URL mismatch between dev/staging/production environments
+**What commonly breaks:**
+- Rename at root level rebuilds paths for thousands of descendants → timeout or partial update
+- Soft-delete at depth 3 (with children at depth 4-6) → recursive CTE misses a branch, leaving orphaned modules
+- Move creates a cycle (module A parent = B, B parent = A) → tree traversal loops
+- Move exceeds max depth 6 → accepted when it should be rejected
+- Concurrent rename + move → race condition leaves stale path materialization
 
-**Dependencies**: Supabase Auth, Resend, middleware.ts
+**Dependencies:** Workspace → Project must exist, user must be member.
 
-**What an experienced QA would check**:
-- Full signup flow: POST magic-link → check email → click link → verify cookie set → access `/projects`
-- Refresh the session after cookie expiry → middleware should refresh transparently
-- Signup via `POST /auth/signup` → verify PAT returned + workspace auto-created
-- Use PAT on every API endpoint — verify no route accidentally rejects bearer (BK-84 regression pattern)
-- POST to `/api/v1/me` with no auth → should 401
+**What an experienced QA would check:**
+- Create module at depth 6 → success
+- Create module at depth 7 → rejection
+- Rename a mid-level module → ALL descendant paths update (verify by GET)
+- Delete (archive) a module with children → children + stories + ATCs all archived (GET individual)
+- Move root-level module under a leaf → cycle rejected
+- Create two modules with same slug (different parent) → allowed (path is unique, not slug)
 
-### HIGH — Module hierarchy operations (FEAT-MOD-001)
+### 4. AC Management (HIGH)
 
-**Why it matters**: BK-57 confirms that `PATCH /modules/{id}` with both `name` and `parent_module_id` is not atomic — the two RPC calls (rename + move) can partially fail. BK-67 suppresses the depth-warning toast at depth >=5. BK-68 allows 1-char names client-side.
+**Why it matters:** ACs are the bridge between "what the business wants" (User Story) and "what we test" (ATC). Losing an AC or corrupting its position breaks that bridge — and the auto-revert of story status on last-AC-delete is a silent semantic change.
 
-**What commonly breaks**:
-- Rename+move in same PATCH → module renamed but not moved (or vice versa), leaving inconsistent state
-- Move a module under its own descendant → cycle should be rejected, might succeed and break path recompute
-- Create module at depth 6 (max) → should get warning. Try depth 7 → should 400
-- Delete a module with 50+ descendants → cascade timeout on serverless function (Vercel 10s limit)
+**What commonly breaks:**
+- Concurrent AC insert at same position → both race to position N, one wins, one gets duplicate (negative-parking should prevent this — verify under load)
+- Delete second-to-last AC → story stays ready_to_test (correct). Delete last AC → story reverts to draft (automatic)
+- Move AC from position 1 to position 5 → positions 2-5 shift up correctly
+- AC soft-delete (archive) → not visible in standard queries but recoverable
 
-**Dependencies**: Projects, materialized path logic, `move_module()` RPC, `soft_delete_module_cascade()` RPC
+**Dependencies:** User Story, Module.
 
-**What an experienced QA would check**:
-- PATCH rename+move together 20 times — verify at least one case where name changes but parent_module_id stays (race condition). Check both fields in the response.
-- Move module A under module B, then move module B under module A → cycle should 400
-- Create 6 levels of nesting, check warning appears. Try level 7 → should 400
-- Soft-delete a module with 3 user stories and 5 ATCs → verify all descendants archived. Restore is NOT implemented — confirm no restore endpoint exists.
-- Create module with 1-char name → should return 422 (client-side check is not server-side safety)
-
-### HIGH — ATC authoring (FEAT-ATC-001)
-
-**Why it matters**: ATCs are the product's core entity. BK-96 (PATCH returns 412 instead of 200 on happy path) means the edit confirmation is broken — the edit commits but the response says precondition failed. Optimistic locking (`version` column) means concurrent edits silently lose.
-
-**What commonly breaks**:
-- Happy-path PATCH returns 412 (BK-96) — user thinks their edit failed but it actually committed
-- Stale version update returns 409 — correct, but error message may not explain "refresh and retry"
-- Full-replace semantics: omitting a field in the body might clear it (API expects all fields)
-- Creating ATC with 0 steps → should 422. With 0 acceptance_criterion_ids → should 422
-- `create_atc_v1()` RPC is SECURITY DEFINER — mistakes in the RPC bypass RLS
-
-**Dependencies**: Modules, user stories, ACs
-
-**What an experienced QA would check**:
-- Create ATC, read it back, verify slug format `<module-slug>/atc-<8hex>`
-- Edit ATC → confirm 200 response (not 412). Read back and verify edit committed
-- Edit with stale `version` → confirm 409
-- Omit `steps` array → 422. Omit `acceptance_criterion_ids` → 422
-- Create ATC with layer=UI, then change to layer=API on edit — verify persisted
-- Verify `atc_acceptance_criteria` junction table has correct rows after create
-
-### HIGH — Jira import (FEAT-IMP-001)
-
-**Why it matters**: BK-142 (staging credentials missing) means the entire import feature is dead on staging. The async model with per-issue error granularity means partial failures can easily go unnoticed.
-
-**What commonly breaks**:
-- Import fails instantly with `jira_unauthorized` (BK-142) — no graceful degradation
-- Import processes 47/50 issues then hits rate limit — remaining 3 silently disappear from result
-- Importing the same JQL twice → `imported_count` should show "already imported, 0 created" but may double-create if external_id dedup fails
-- One-active-import constraint should reject a second import on the same project while first is running
-
-**Dependencies**: jira.js, Jira REST API, Supabase DB
-
-**What an experienced QA would check**:
-- POST import with invalid JQL → get job back with status "queued", then poll until it fails with error details
-- POST import with valid JQL → poll until "completed", verify `created_count` matches expected
-- Wait for import to complete, then import again — `created_count` should be 0, `updated_count` may show matching
-- Start an import, immediately start another on same project → should 409 (one-active-import constraint)
-- Verify imported user stories have `external_id` set and `external_url` pointing to Jira
+**What an experienced QA would check:**
+- Create 5 ACs on a story, verify positions 1-5 consecutive
+- Insert at position 3 → new AC is pos 3, old 3 → 4, 4 → 5, 5 → 6
+- Delete all ACs → story.status = "draft" (verify via GET story)
+- Try to set story to ready_to_test with 0 ACs → rejection
+- Concurrent insert at same position → both succeed, no collision
 
 ---
 
-## 3. State machines that matter
+## State Machines That Matter
 
-### Module soft-delete cascade
+### ATC Status
 
-```
-Module → archived_at = NOW()
-  → child Modules → archived_at = NOW()
-  → User Stories (module-level) → archived_at = NOW()
-  → ATCs → archived_at = NOW()
-```
+**Why it matters:** ATC status drives test execution reporting. An ATC stuck in `running` (runner crash) inflates "in progress" counts. A transition from `blocked` → `pass` without re-running is suspicious.
 
-**Why it matters**: The cascade runs inside a SECURITY DEFINER RPC (`soft_delete_module_cascade()`). If it errors partway through, some descendants remain active while the parent is archived — orphaned data with no UI to surface it.
+**Transitions most likely broken:**
+- `running → blocked` (does the runner handle dependency failures gracefully?)
+- `blocked → unrun` (reset not offered in UI, but valid at DB level)
+- Direct jump `unrun → pass` (bypasses execution — possibly valid for pre-asserted ATCs?)
 
-**Transitions most likely to be broken**:
-- Cascade with 100+ descendants → Vercel function timeout (10s) mid-cascade
-- Cascade on a module that was already soft-deleted → idempotent or error?
-- Cascade on a module whose parent was already soft-deleted → should cascade further up? (It should not — deletion goes downward)
+**Forbidden states to guard:** None enforced at DB level (any → any is allowed). If the product wants lifecycle restrictions (e.g., `blocked` cannot go to `pass` without re-running), enforce at app layer and test the gate.
 
-### Run state machine (NOT YET IMPLEMENTED)
+**Detection:** A sudden spike of ATCs in `running` across a project suggests the execution runner has a bug.
 
-```
-[*] → created → running → passed → [*]
-            ↓
-      ┌→ failed → [*]
-      └→ aborted → [*]
-```
+### User Story Status
 
-**Why it matters**: The Run state machine is fully planned (BK-34–BK-39) but not implemented. When it lands, the most critical invariant is: a Run cannot be finished twice, and step results cannot be posted after the Run is finished.
+**Why it matters:** `ready_to_test` is the signal that a story is groomed enough for ATC authoring. If a story stays `ready_to_test` with 0 ACs (the auto-revert fails), engineers waste time clicking into an empty story.
 
-### User story ready-to-test gate
-
-```
-draft ──────────────────────► ready_to_test
-  (set_user_story_ready_to_test() validates:
-   - At least 1 active AC exists
-   - Gate is serialized via FOR UPDATE)
-
-ready_to_test ─────────────► draft
-  (re-opening allowed)
-```
-
-**Why it matters**: SERIALIZABLE FOR UPDATE gate prevents concurrent bypass of the AC requirement. A race condition here means an empty user story can be flagged ready-to-test.
-
-**Transitions most likely to be broken**:
-- Two concurrent PATCH requests to set `ready_to_test` — one should block and get the updated state
-- Set `ready_to_test` with 0 active ACs → 409. Add an AC, retry → 200. Archive the AC, try to set ready → 409
-- Direct DB insert bypassing the RPC — RLS on `user_stories` should reject setting `status = 'ready_to_test'` without calling the RPC
+**Transitions most likely broken:**
+- `ready_to_test → draft` on last AC delete (the DB function fires but the returned response shows stale status)
+- `ready_to_test` set with exactly 0 ACs (the FOR UPDATE lock should prevent this — but two concurrent transactions: one deletes AC, other sets ready_to_test)
 
 ---
 
-## 4. Silent killers — automated processes
+## Silent Killers — Automated Processes
 
-| Process | What it does | Breaks if | Detection today | Recommended QA strategy |
-|---------|-------------|-----------|-----------------|------------------------|
-| `bootstrap_first_workspace()` trigger | Auto-creates workspace on auth.users INSERT | Trigger disabled, RLS misconfigured, or race condition on signup | None — user sees empty workspace list with no error | Synthetic signup → verify workspace exists in GET /me response |
-| `import_jobs` async processing | Fetches Jira issues, upserts user stories | Vercel timeout (10s), Jira API rate limit, token expiry mid-import | None — job status shows "running" forever (no timeout) | Poll import job every 5s until terminal; log timeout as failure |
-| `idempotency_keys` TTL cleanup | Removes old idempotency keys from DB | No cleanup → table grows unbounded | None — no monitoring on idempotency_keys table size | Verify mutation with same key returns cached response; check TTL is honored |
+### Vercel `after()` Jira Import
+
+**What it does:** After the HTTP 202 response, Vercel's `after()` slot runs the JQL import in background. It pages through Jira API, creates/updates stories and ACs in Supabase.
+
+**What breaks if it fails:**
+- Misses a page → partial import (some stories missing). No user notification.
+- Runs twice → duplicate stories/ACs (idempotency depends on Jira issue ID matching — if JQL changes, duplicates happen)
+- Runs out of Vercel timeout → import marked `failed` but partial data is already committed.
+
+**How failure is detected today:** Status poll via GET `/api/v1/imports/{id}`. If the user doesn't poll, they never know it failed. No email/webhook on failure.
+
+**Recommended QA strategy:**
+- Synthetic probe: create an import with a known JQL that returns 2-3 issues, poll until complete, verify exact count
+- Edge case: JQL returning 0 results → import succeeds with 0 rows
+- Edge case: JQL syntax error → import fails fast with error in `errors` field
+- Concurrency: try to start a second import while one is running → should reject (partial unique index)
+
+### DB Triggers (atcs_set_updated_at, atcs_refresh_tsv)
+
+**What they do:** Auto-set `updated_at` on any ATC update. Auto-refresh the `tsvector` for full-text search on title/tag changes.
+
+**What breaks:** Disabled trigger (DB migration, manual SQL) — silently. `updated_at` stops updating; TSV search returns stale results. No one notices until someone searches for a newly-created ATC title and it doesn't appear.
+
+**Detection:** None — no monitoring on trigger health.
+
+**Recommended QA strategy:**
+- After every ATC create/update, verify `updated_at` is within 1 second of the response timestamp
+- After every ATC title update, search for the new title term and confirm it appears in results
+
+### AC Auto-Revert on Last-AC-Delete
+
+**What it does:** When the last active AC is archived, the DB function sets `user_stories.status = 'draft'`.
+
+**What breaks:** The function errors (e.g., FK constraint on ATCs still referencing that AC) but the AC archive already committed → story stays `ready_to_test` with 0 ACs. Or the function silently fails and the story appears ready when it's not.
+
+**Detection:** None — the UI might show a story as ready_to_test with no ACs displayed.
 
 ---
 
-## 5. External integrations — failure points
+## External Integrations — Failure Points
 
-| Service | Business flow that stops | Acceptable degradation | Known quirks |
-|---------|-------------------------|----------------------|--------------|
-| **Supabase Auth** | Signup, sign-in, session refresh, PAT identity resolution | None — hard fail on every auth-dependent flow | Free tier: 4 OTP emails/hour/email (429). Admin API requires `service_role` key |
-| **Resend** | Magic-link delivery, invite emails | None — user never receives OTP or invite. No fallback provider | Delivery time varies (2s–2min). No tracking on recipient open/click |
-| **Jira (jira.js)** | Jira import | Partial degradation — import runs but may miss issues. BK-142: staging completely dead | Rate limits per API token. Pagination required for >50 issues per JQL |
-| **Vercel** | All API routes + frontend | Cold start latency (>1s on infrequent routes). Function timeout (10s default) for heavy imports | Canary Next.js 15 — build-only bugs possible. OpenAPI spec is force-static (no runtime update) |
+### Supabase
+
+| Failure mode | Business impact | Degradation |
+|-------------|----------------|------------|
+| DB down | Complete app outage. No auth, no CRUD, no search. | None — Bunkai is a DB-first app |
+| RLS policy misconfiguration | Cross-tenant data leak OR full lockout | None |
+| Auth service degraded | New logins fail; existing sessions may work until cookie expiry | Sessions cache briefly (cookie TTL), but no login |
+| Connection pool exhausted | Random 5xx on high traffic | None documented |
+
+**Critical timeouts:** Default Supabase client timeout. On slow network, requests may hang. Recommend verifying explicit timeout config and testing with a simulated slow DB.
+
+### Jira
+
+| Failure mode | Business impact | Degradation |
+|-------------|----------------|------------|
+| Rate limited | Import pauses/resumes | Non-blocking — import retries on next run? (unclear from code — check retry logic) |
+| API key expired | All imports fail with auth error | Import job fails with clear error; existing data unaffected |
+| API schema change | ADF→Markdown conversion produces garbled AC content | Content loss, but structure intact |
+
+**Known quirks:**
+- JQL syntax differs between Jira Cloud and Jira Server (Bunkai targets Cloud)
+- Pagination limit of 1000 pages (1000 results? 1000 requests? — verify the actual cap)
+- ADF markdown conversion may lose formatting (bullets, tables, code blocks)
 
 ---
 
-## 6. Dependency cascade between flows
+## Dependency Cascade Between Flows
 
 ```
-Signup ──► Auth ──► Workspace ──► Invite ──► Member joins
-  │          │          │            │
-  │          │          ▼            ▼
-  │          │       Project      Workspace
-  │          │          │         Membership
-  │          │          ▼
-  │          │       Module tree
-  │          │          │
-  │          │          ▼
-  │          │     User Story ──► AC ──► ATC ──► Test (chain) ──► Run ──► Bug
-  │          │                       │        │         │           │       │
-  │          │                       │        │         │           │       │
-  │          │                       ▼        ▼         ▼           ▼       ▼
-  │          │                    Traceability    Coverage         Defect Heatmap
-  ▼          ▼
-PAT ──── Scope enforcement ────► All API routes
+Auth ──► Workspace ──► Project ──► Module Tree ──► User Stories ──► ACs ──► ATCs
+  │          │             │              │               │           │        │
+  └── all flows die if auth fails ───────┘               │           │        │
+                                                          │           │        │
+                                           Last AC delete ──► reverts story  │
+                                                                             │
+                                           ATC anchoring ──► must reference ◄┘
+                                                              ≥1 active AC
 ```
 
-The critical insight: **Auth and workspace membership are the root dependencies of everything else**. If BK-60/61/62 compromise invite integrity, the cascade means every downstream feature (projects, modules, ATCs, runs, bugs) operates on corrupt membership data. Similarly, if PAT scope enforcement is broken (BK-117/134), a leaked member-level PAT can escalate to admin on any workspace.
+**Critical chain 1 — ATC create depends on everything upstream:**
+```
+Auth → Workspace membership → Project access → Module exists → Story exists → ACs exist
+```
+Break any link and the user cannot create an ATC. Test the error messages for each missing link — the user needs to know WHICH dependency is missing, not a generic 403/500.
+
+**Critical chain 2 — AC delete cascades to story status:**
+```
+Delete AC → no remaining active ACs → story reverts to draft → story no longer ready_to_test
+```
+This is correct behavior but can surprise users. Verify the UI reflects the status change within the same page load (no stale cache).
 
 ---
 
-## 7. Edge cases developers commonly forget
+## Edge Cases Developers Commonly Forget
 
 ### Concurrency
-- Two concurrent `PATCH /modules/{id}` calls — one renames, one moves. BK-57: they are not atomic within the same call, let alone across concurrent calls
-- Two concurrent `set_user_story_ready_to_test()` — FOR UPDATE should serialize, but application-level retry logic is unverified
-- POST import on same project while another is running — the one-active-import constraint is a DB-level check, what happens when the app sends two in rapid succession?
 
-### Data limits
-- Module name: min 2 chars per API spec, but BK-68 confirms 1-char names pass client-side
-- User story description: API spec says max 50KB, BK-99 confirms server-side does not enforce it
-- ATC steps: max 2KB per step content, max 10 tags per ATC
-- Module nesting: max depth 6, but `path` column is text — what happens at depth 20?
+| Theme | Flow at risk | What to test |
+|-------|-------------|--------------|
+| AC position race | AC create/move | Two users insert at same position → both succeed, no collision (negative-parking) |
+| ATC create race | ATC create | Two users create ATC with same module-path → both succeed with unique slugs |
+| Module rename vs create | Module tree | Rename module while another user creates a child → path consistency |
+| Story status race | User Stories | Concurrent: user A deletes last AC, user B sets ready_to_test. One should fail. |
 
-### Permission boundaries
-- `workspace:admin` scope on PAT issued by a member-role user — BK-117, BK-134
-- Cross-workspace access: can a PAT scoped to workspace A read data from workspace B?
-- Archived entities: can a viewer-role user see archived data? (They should not, per soft-delete design)
-- RLS bypass via SECURITY DEFINER RPCs — `create_atc_v1()` and `soft_delete_module_cascade()` run with elevated privileges
+### Data Limits
 
-### Idempotency
-- Which mutation endpoints actually enforce idempotency keys? OpenAPI spec mentions `idempotency_key_required` error but per-endpoint documentation is missing
-- Double-click on "Create Project" without idempotency key → 2 projects with same name/slug? (Slug uniqueness per workspace should prevent this)
-- Retry with same key after timeout → verify cached response is returned, not a new execution
+| Theme | Flow at risk | What to test |
+|-------|-------------|--------------|
+| Module depth | Module tree | 6 levels max → 7th level rejected |
+| ATC steps/count | ATC create | 100 steps on one ATC → verify response time and ordering |
+| Module children | Module tree | 500 sibling modules under one parent → rename performance |
+| Slug length | ATC create | Very long module path + long slug → truncation or 413? |
+| Jira import size | Import | JQL returning 10,000 issues → import handles pagination |
 
----
+### Permission Boundaries
 
-## 8. Pre-release checklist (priority-ordered)
+| Theme | Flow at risk | What to test |
+|-------|-------------|--------------|
+| Cross-workspace | All | User A from workspace 1 cannot access workspace 2's data even with direct URL |
+| Viewer write | Module, AC, ATC | Viewer role → all write endpoints return 403 |
+| Token scope | ATC | atc:read token → PATCH returns 403 |
+| PAT issuance | Auth | PAT trying to create PAT → 403 |
+| Revoked token | Auth | Revoked PAT → 401 on next request |
+| Invite demotion | Workspace | member receives viewer invite → reject (no demotion rule) |
 
-1. **Verify invite integrity**: invite same email twice → 409. Invite existing member → 409. Accept invite → verify role is not overwritten (BK-60/61/62)
-2. **Verify PAT scope enforcement**: member-role user tries `POST /tokens` with `workspace:admin` → 403 (BK-117/134)
-3. **Verify signup flow**: magic-link → callback → session cookie → access protected page
-4. **Verify PAT auth**: signup → use PAT on every API endpoint → no 401 regression (BK-84 pattern)
-5. **Verify module rename+move atomicity**: PATCH with both `name` and `parent_module_id` → both applied or both rejected (BK-57)
-6. **Verify ATC edit response**: PATCH an ATC → confirm 200, not 412 (BK-96)
-7. **Verify Jira import on staging**: credentials configured → import completes without `jira_unauthorized` (BK-142)
-8. **Verify module depth enforcement**: create at depth 6 → warning. Try depth 7 → 400 (BK-67)
-9. **Verify user story ready-to-test gate**: set ready with 0 ACs → 409. Add AC, retry → 200
-10. **Verify soft-delete cascade**: delete module → confirm all descendants archived. Verify they disappear from UI
-11. **Verify Markdown size limits**: upload >50KB → 422 (BK-99). Check warning at ~45KB (BK-100)
-12. **Verify cross-workspace isolation**: PAT from workspace A cannot read data from workspace B
-13. **Verify idempotency**: POST create with same key → same response, no duplicate entity
-14. **Verify rate limit**: exceed 600 req/min → 429 with `rate_limited` code
-15. **Verify activity_log audit writes**: module rename/move/delete → verify row in `activity_log` (BK-59)
+### Orphaned Data
+
+| Theme | Flow at risk | What to test |
+|-------|-------------|--------------|
+| Module archive | Module tree | Archive module → stories not accessible via module tree, but direct URL to story should 404 |
+| ATC archive | ATC | Archive ATC → removed from list/serach, but activity log entry exists |
+| User removal | Workspace | Remove user from workspace → their PATs still work? (should they be revoked?) |
 
 ---
 
-## 9. What is NOT in this plan
+## Pre-Release Checklist (Priority-Ordered)
+
+1. `[CRITICAL]` Verify ATC create with 5 steps + 3 assertions + 2 AC bindings returns all children in correct order
+2. `[CRITICAL]` Verify PATCH ATC with stale `X-If-Match` header returns 409
+3. `[CRITICAL]` Verify User A's PAT returns 403 for User B's workspace data across all endpoints
+4. `[CRITICAL]` Verify viewer-role member receives 403 on POST/PATCH/DELETE endpoints
+5. `[CRITICAL]` Verify revoked PAT returns 401 on next request
+6. `[CRITICAL]` Verify module create at depth 7 returns 422/400
+7. `[CRITICAL]` Verify module delete cascades to archive children + stories + ACs + ATCs
+8. `[HIGH]` Verify concurrent AC insert at same position — both succeed, no collision
+9. `[HIGH]` Verify last-AC-delete reverts story status to `draft`
+10. `[HIGH]` Verify story cannot transition to `ready_to_test` with 0 ACs
+11. `[HIGH]` Verify PAT with `atc:read` only cannot PATCH/DELETE ATCs
+12. `[HIGH]` Verify invite accept with lesser role than existing membership is rejected
+13. `[MEDIUM]` Verify Jira import with 0 results reports success with 0 rows
+14. `[MEDIUM]` Verify concurrent Jira import on same project rejects the second
+15. `[MEDIUM]` Verify full-text search finds ATCs created in the current session
+
+---
+
+## What is NOT in This Plan
 
 - Flow-level diagrams and state-machine transition tables → `.context/business/business-data-map.md`
 - Feature catalog, CRUD matrix, feature flags → `.context/business/business-feature-map.md`
-- API endpoint inventory / contracts → `bun run api:sync` + `.context/business/business-api-map.md`
+- API endpoint inventory / contracts → `bun run api:sync` + `/business-api-map`
 - Detailed test case definitions and traceability → TMS (see `/test-documentation`)
-- Sprint-level execution order → sprint testing workflow (see `/sprint-testing`)
+- Sprint-level execution order → `.context/reports/SPRINT-{N}-TESTING.md` (see `/sprint-testing`)
+- UI-specific test scenarios (layout, responsive, dark mode, accessibility) → per-ticket testing via `/sprint-testing`
+- Performance/load testing — not in scope for MVP
+- Database migration testing — assumes migrations are tested separately
 
 ---
 
-## 10. Discovery gaps
+## Discovery Gaps
 
-- The feature-map was generated from code scan and PBIs, not from live testing — some CRUD gaps may be incomplete.
-- Jira import's actual error handling at scale (500+ issues) is untested — Vercel timeout behavior on large imports is unknown.
-- PAT scope enforcement scope (BK-117/134) was confirmed by code scan but actual blast radius (which routes are gated by which scopes) needs live testing.
-- The `activity_log` table exists and BK-59 (module audit writes) is a known gap — it is unclear which other operations write to activity_log.
-- No performance testing has been done — cold start latency, DB query plans, and RPC execution time are unknown.
-- The Run state machine and related tables are not implemented yet — when they land, the test plan needs a new CRITICAL section for execution integrity.
+- **Feature map generated** — `.context/business/business-feature-map.md` exists and was cross-referenced. Enabled CRUD-coverage gap analysis (module tree read endpoints undocumented, workspace delete/member-role-change missing), per-feature QA-relevance tagging in §Executive Risk Map, and the zero-coverage baseline in §Pre-Release Checklist.
+- **Live API not exercised** — endpoint behavior derived from route files and DB functions. Actual error responses, status codes, and edge-case behavior may differ.
+- **RLS policies not inspected** — authorization model derived from code, not from `pg_policies` inspection. The actual Postgres-level gates may differ from what the code expects.
+- **Retry logic on Jira import** — unclear if failed imports auto-retry or require manual re-trigger.
+- **Vercel `after()` timeout** — unclear what happens if the import exceeds the background slot timeout. Does it fail gracefully?
+- **ATC status lifecycle enforcement** — DB allows any→any transitions. If the product intends restrictions (e.g., `blocked → pass` requires re-run), the gate is not yet implemented.

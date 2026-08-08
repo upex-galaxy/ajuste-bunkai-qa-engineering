@@ -1,181 +1,381 @@
-# Business Data Map: Bunkai (QA Context)
+# Bunkai — Business Data Map
 
-> Generated: 2026-06-18
-> Sources: target `architecture-specs.md` (ERD), `business-data-map.md`, `functional-specs.md`, `domain-glossary.md` (this repo).
-> Scope: Bunkai MVP — Cloud edition.
-
----
+```
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║                    BUNKAI (分解) — TMS                          ║
+  ║       Test Management System for QA Engineers                  ║
+  ║     Multi-tenant · Jira-sync · ATC-first · Supabase-backed     ║
+  ╚══════════════════════════════════════════════════════════════════╝
+```
 
 ## Executive Summary
 
-**What does this system do?** Bunkai is a Test Management System. QA engineers create atomic, reusable ATCs (Atomic Test Components) anchored to User Stories + Acceptance Criteria, chain them into Tests, execute Runs manually (or via API in Phase 2), and file Bugs natively — all within a hierarchical Workspace → Project → Module structure.
+Bunkai is a **Test Management System (TMS)** purpose-built for QA engineers. Teams organize testing work under **workspaces** (multi-tenant), create **projects** (the system-under-test), define a **module tree** (up to 6 levels deep), author **User Stories** with **Acceptance Criteria**, and write **Acceptance Test Cases (ATCs)** — the core entity — with ordered steps, assertions, and AC bindings.
 
-**Main Actors**
+Actors and their relationship:
 
-| Actor | Description | Key Flows |
-|---|---|---|
-| QA Engineer (Elena) | Creates ATCs, Tests, Runs, Bugs | Create ATC → Chain Test → Execute Run → File Bug |
-| QA Lead (Mateo) | Configures Workspace, watches dashboards | Manage Modules → View Reports → Filter Runs |
-| Developer (Sara) | Checks coverage for her features | Search ATCs → View Test detail → Link Bugs |
-| AI Agent (Karim) | Drives Runs via REST API | Auth → Fetch Test → Execute Run → Report Results |
-| Viewer (stakeholder) | Consumes dashboards read-only | View heatmaps, coverage trends |
+```
+  QA Engineer ──► Workspace ──► Project ──► Module Tree
+       │                                            │
+       │                                            +──► User Stories ──► ACs
+       │                                            │
+       │                                            +──► ATCs (Steps · Assertions · AC bindings)
+       │
+       +──► Jira (import stories + ACs via JQL)
+       +──► PAT (CLI/Agent auth, scoped)
+```
+
+Value proposition: one place to author, organize, track, and report on test cases — with Jira bi-directional sync, RBAC workspaces, and a developer-focused dark-mode UI.
 
 ---
 
 ## Entity Map
 
-### Core Entities
-
 ```
-Workspace (tenant root)
-  └── Project (app under test)
-        ├── Module (test area — tree, depth ≤ 6)
-        │     ├── User Story (feature)
-        │     │     └── Acceptance Criterion (testable behavior)
-        │     ├── ATC (atomic test component — anchored to US+AC)
-        │     │     ├── ATC Step (ordered step)
-        │     │     └── ATC Assertion (expected outcome)
-        │     └── Bug (defect — anchored to Module)
-        ├── Environment (target URL)
-        └── Integration (Jira sync)
-
-Test (ordered ATC chain)
-  └── Test Step (ATC invocation — ordered)
-
-Run (Test execution)
-  ├── Run ATC (snapshot of ATC at run time)
-  │     └── Run Step (step result: pass/fail/block)
-  └── Bug (optionally linked)
-
-User
-  ├── Workspace Member (RBAC role)
-  └── Access Token (PAT for API auth)
+auth.users
+    │  (owner_user_id)
+    ├──< workspaces
+    │      ├──< workspace_members (RBAC: viewer|member|admin|owner)
+    │      ├──< projects
+    │      │      ├──< modules  (self-referential tree, max depth 6, materialized path)
+    │      │      │      ├──< user_stories (draft|ready_to_test)
+    │      │      │      │      └──< acceptance_criteria (positioned, soft-delete)
+    │      │      │      └──< atcs  (CORE ENTITY)
+    │      │      │              ├──< atc_steps (content · input_data · expected)
+    │      │      │              ├──< atc_assertions (content)
+    │      │      │              └──< atc_acceptance_criteria (M:N join)
+    │      │      └──< import_jobs (async Jira import, one active per project)
+    │      ├──< workspace_invites (email, 7d expiry, accepted|revoked|expired)
+    │      └──< activity_log (audit trail)
+    │
+    ├──< access_tokens (PAT: bk_pat_*, scopes, browser-only issuance)
+    ├──< magic_link_tokens (OTP audit trail)
+    ├──< idempotency_keys (24h POST replay protection)
+    ├──< feature_flags (global|workspace scoped)
+    └──< user_view_state (UI persistence)
 ```
 
-### Entity Details
-
-| Entity | Key Attributes | Stateful? | Primary API |
-|---|---|---|---|
-| Workspace | id, name, slug | No | POST /workspaces |
-| Project | id, workspace_id, name, slug | No | POST /projects |
-| Module | id, project_id, parent_module_id, name, path, archived_at | Yes (archived) | POST /modules |
-| UserStory | id, module_id, title, description, external_id | No | POST /user-stories |
-| AcceptanceCriterion | id, user_story_id, title, position | No | POST /acceptance-criteria |
-| ATC | id, module_id, title, layer, tags | Yes (via module archive) | POST /atcs |
-| Test | id, title, tags | No | POST /tests |
-| Run | id, test_id, status, environment_id, executor | Yes (5 states) | POST /runs |
-| RunStep | id, run_atc_id, atc_step_id, status, evidence | Yes (3 states) | POST /runs/{id}/steps/{step_id}/result |
-| Bug | id, module_id, atc_id, run_id, severity, status | Yes (5 states) | POST /bugs |
+| Entity | Business Role | Why it exists |
+|--------|---------------|---------------|
+| **Workspace** | Multi-tenant boundary | Isolate QA teams. Owner manages members, plan (community → cloud → enterprise). |
+| **WorkspaceMember** | RBAC access | Each user has a role per workspace. Invite flow: viewer (read-only) → member (read-write) → admin (manage) → owner (delete). |
+| **Project** | System-under-test | The application your team tests. Each workspace can have many projects. |
+| **Module** | Hierarchical organization | Tree of features/modules (max 6 deep). Materialized path for fast queries. Supports rename, move (with cycle/depth guard), soft-delete subtree. |
+| **UserStory** | Business intent | A feature or requirement tied to a module. Status gates: `draft` → `ready_to_test` requires ≥1 AC. Soft-deletable. Optional Jira `external_id`. |
+| **AcceptanceCriterion** | Testable condition | The "what" of testing. Belongs to a story, ordered by `position`. Last-AC-archived auto-reverts story to `draft`. Soft-deletable (parking-lot technique for reordering). |
+| **ATC** | Formal test case | THE core entity. A complete test: steps + assertions + AC bindings. Has slug, layer (UI/API/Unit), version (optimistic lock), status lifecycle (unrun → pass/fail/blocked/skipped/running), tags, full-text search. Soft-deletable. Must anchor to ≥1 AC. |
+| **AtcStep** | Test step | Ordered: content, input_data, expected result. |
+| **AtcAssertion** | Test assertion | Ordered: what to assert. |
+| **AtcAcceptanceCriterion** | Traceability link | M:N join ensuring every ATC is traceable to ≥1 AC within the same User Story. |
+| **AccessToken** | PAT for CLI/Agent | `bk_pat_*` prefix. Scopes: atc:read, atc:write, run:execute, workspace:admin. Browser-session-only issuance (PAT cannot mint PAT). |
+| **ImportJob** | Jira import | Async JQL-based import. One active per project (partial unique index). Status: queued → running → completed/failed. |
+| **ActivityLog** | Audit trail | Immutable log of entity mutations (atc.created, story.updated, etc.). |
+| **IdempotencyKey** | POST safety | 24h TTL, (user, endpoint, key) scoped. Prevents duplicate ATC/AC creation on retry. |
 
 ---
 
-## State Machines (QA Critical)
+## Business Flows
 
-### Run State Machine
-
-```
-[*] → created → running → passed → [*]
-                    ↓
-              ┌→ failed → [*]
-              └→ aborted → [*]
-```
-
-**Transitions to test**:
-- `created → running`: first step result posted
-- `running → passed`: all ATCs pass
-- `running → failed`: any step fails
-- `running → aborted`: abort endpoint called
-- `[idempotency]` same `idempotency_key` → same `run_id`
-- `[edge]` double-finish attempt → idempotent (no error)
-
-### Bug State Machine
+### Flow 1: Workspace Onboarding (Sign-up + First Workspace)
 
 ```
-[*] → open → in_progress → resolved → closed → [*]
-                    ↓              ↑
-                rejected → [*]
-                   
-open → reopened → [*] (reopen from closed)
+User ──► /auth/signup ──► POST /api/v1/auth/signup ──► auth.users created
+                                                           │
+                                                           ▼
+User ──► POST /api/v1/workspaces ──► bunkai_bootstrap_workspace()
+                                                           │
+                                      ┌────────────────────┤
+                                      ▼                    ▼
+                               workspace created      owner membership inserted
+                                                           │
+                                      ┌────────────────────┤
+                                      ▼                    ▼
+                               cookie session set     PAT minted (response only)
 ```
 
-**Transitions to test**:
-- Filed from `run` step result (passes Module + ATC + Run context)
-- Filed standalone via API (requires `module_id`)
-- Severity P1–P4 enforced (required field)
-- Optional Jira sync (bidirectional)
+**Business rules:**
+- Signup auto-confirms (no email verification)
+- Bootstrap creates workspace + owner membership atomically (SECURITY DEFINER)
+- Workspace plan defaults to `community`
+- PAT returned in signup response — shown once only
 
-### Module Soft-Delete Cascade
+### Flow 2: Jira Import
 
 ```
-Module → archived_at set
-  → child Modules → archived_at set
-  → User Stories → archived_at (if module-level)
-  → ATCs → archived_at
-  → Tests → archived_at (if anchored)
-  → Bugs → archived_at
+User ──► POST /api/v1/imports { jql, projectId }
+           │
+           ▼
+    Insert import_job (queued)
+           │
+           ▼
+    Vercel after() background slot
+           │
+           ▼
+    import_run() ──► Jira API (paginated, up to 1000 pages)
+                        │
+                        ▼
+           For each issue: upsert user_story + ACs
+                        │
+           ┌────────────┴────────────────┐
+           │                              │
+      Insert/Update                 Log errors
+      stories + ACs                      │
+           │                              ▼
+           ▼                      status = 'failed'
+    status = 'completed'
 ```
 
-**Invariant**: Archived entities are excluded from dashboards and searches. They are NOT hard-deleted.
+**Business rules:**
+- One active import per project (partial unique index enforces)
+- Race-free via atomic status claim (queued → running, WHERE current_timestamp)
+- Jira auth token from DB, not env
+- Errors collected per-item, available via GET /imports/{id}
+
+### Flow 3: ATC Authoring (Create)
+
+```
+User ──► POST /api/v1/atcs { moduleId, storyId, steps[], assertions[], acIds[] }
+           │
+           ▼
+    Principal check (requires `atc:write` scope)
+           │
+           ▼
+    bunkai_create_atc() — single RPC transaction
+           │
+      ┌────┴─────────────────────────────────┐
+      │     Validate acIds belong to story       │
+      │     Generate slug (module-path/atc-*)    │
+      │     Increment version (starts at 1)      │
+      │     Insert ATC row                       │
+      │     Insert steps (ordered)               │
+      │     Insert assertions (ordered)          │
+      │     Insert AC bindings                   │
+      │     Insert activity_log event            │
+      │     Return full ATC with children        │
+      └─────────────────────────────────────────┘
+```
+
+**Business rules:**
+- ATC must anchor to ≥1 AC belonging to the parent User Story
+- ATC's module must be the story's module or a descendant thereof
+- Steps and assertions are full-replaced on update (PATCH /atcs/{id})
+- Optimistic locking via `X-If-Match` header + `version` column
+- PAT issuance requires `atc:write` scope
+
+### Flow 4: Module Tree Management
+
+```
+User ──► POST /modules          (create)
+User ──► PATCH /modules/{id}   (rename → path rebuild cascade)
+User ──► POST /modules/{id}/move (re-parent → cycle+ depth check)
+User ──► DELETE /modules/{id}   (soft-delete → recursive CTE archive)
+```
+
+**Business rules:**
+- Max depth: 6 levels (enforced in RPC)
+- Cycle detection: path-prefix check prevents ancestor-as-descendant moves
+- Rename: rebuilds materialized `path` for module + ALL descendants in one UPDATE
+- Delete: recursive CTE archives module + stories + ACs + ATCs in the subtree
+- Uniqueness: `(project_id, path)` unique, case-insensitive slug for siblings
+
+### Flow 5: Acceptance Criteria Management
+
+```
+User ──► POST   /user-stories/{id}/acceptance-criteria (create + auto-position)
+User ──► PATCH  /acceptance-criteria/{id}               (move position)
+User ──► DELETE /acceptance-criteria/{id}               (archive)
+           │
+           ▼
+    If last AC archived → auto-revert story to `draft`
+```
+
+**Business rules:**
+- Position rebalance uses negative-parking (collision-free concurrent inserts)
+- Last-AC-removal causes story status auto-revert (draft gate)
+- Story transition `draft → ready_to_test` requires ≥1 active AC (FOR UPDATE lock)
+
+### Flow 6: Authentication & Authorization
+
+```
+Browser:  POST /auth/magic-link → email OTP → callback → cookie session
+           or POST /auth/signin  → email+password → cookie session + PAT
+
+CLI:      Bearer bk_pat_XXXXX → resolveIdentity() → Principal
+           │
+           ▼
+    Supabase RLS client (scoped to caller's workspace memberships)
+           │
+           ▼
+    Postgres enforces: can caller read/write this row?
+```
+
+**Dual auth parity:**
+- Both auth modes collapse to a single `Principal` shape
+- Both use the same RLS-scoped Supabase client
+- Authorization is Postgres-enforced, not TypeScript-level
+- PAT issuance is browser-session-only (PAT cannot mint PAT)
 
 ---
 
-## Key Flows
+## State Machines
 
-### Flow 1: Create ATC → Chain into Test → Execute Run → File Bug
-
-```
-Elena creates ATC-001 (anchored to US-BK-12 AC-03)
-  → Chains [ATC-001, ATC-002, ATC-003] into TEST-008
-  → Starts RUN-045 on staging
-  → Steps through ATCs (pass/fail/block per step)
-  → ATC-002 step 3 fails → files BUG-014
-  → Aborts RUN-045
-  → Dashboard shows Payment module +1 defect
-```
-
-### Flow 2: AI Agent Nightly Regression
+### ATC Status (`atcs.status`)
 
 ```
-Agent (Karim) authenticates with Bearer token
-  → GET /tests/TEST-008?expand=atcs.steps
-  → POST /runs { test_id, idempotency_key }
-  → For each ATC step: POST /runs/{id}/steps/{step_id}/result
-  → On failure: POST /bugs
-  → POST /runs/{id}/finish
-  → Both Run + Bug indistinguishable from manual flow
+           ┌─────────┐
+           │  unrun  │────────────┐
+           └────┬────┘            │
+                │                 │
+                ▼                 │
+           ┌─────────┐           │
+           │ running │           │
+           └────┬────┘           │
+                │                 │
+       ┌────────┼────────┐       │
+       ▼        ▼        ▼       │
+   ┌──────┐ ┌──────┐ ┌──────┐   │
+   │ pass │ │ fail │ │blocked│   │
+   └──────┘ └──────┘ └──────┘   │
+       │        │        │       │
+       └────────┴────────┴──┬────┘
+                            │
+                            ▼
+                    Any state → any (full cycle allowed)
+```
+
+| From | To | Event | Effects |
+|------|----|-------|---------|
+| unrun | running | Test execution started | Locks ATC row |
+| running | pass | All assertions met | Updates status, logs activity |
+| running | fail | Assertion(s) failed | Updates status, logs activity |
+| running | blocked | Cannot proceed | Dependency / env issue |
+| running | skipped | Intentionally skipped | — |
+| Any | unrun | Reset | Returns to initial state |
+
+**Business consequence:** ATC status drives test execution reporting. An ATC stuck in `running` (e.g., crashed runner) blocks accurate pass/fail metrics.
+
+### User Story Status (`user_stories.status`)
+
+```
+  ┌───────┐     ≥1 AC active      ┌──────────────┐
+  │ draft │ ──────────────────►   │ready_to_test │
+  └───┬───┘                      └──────┬───────┘
+      │                                  │
+      └── Last AC archived ◄─────────────┘
+```
+
+| From | To | Event | Effects |
+|------|----|-------|---------|
+| draft | ready_to_test | PATCH story status | Rejected if 0 active ACs (FOR UPDATE lock) |
+| ready_to_test | draft | Last AC archived | Auto-revert via DB function |
+
+**Business consequence:** A story without ACs cannot be marked ready. This enforces BDD-quality: you must define what "done" means before testing begins.
+
+### Member Role & Status
+
+```
+Role hierarchy:  viewer (read) < member (write) < admin (manage) < owner (full)
+
+Status:  invited ──► active ◄── suspended
+                │
+                └── expires (7d) ──► (no active membership)
+
+Rule: No demotion on invite accept (≥ existing role → reject)
+```
+
+**Business consequence:** Role escalation bugs could leak write access to viewers. Status bypass could allow suspended members to access data.
+
+### Invite Status (derived)
+
+```
+pending ──► accepted (user accepts with matching email)
+     │
+     ├──► revoked (admin revokes)
+     └──► expired (7 days TTL)
+```
+
+### Import Job Status
+
+```
+queued ──► running ──► completed
+                  │
+                  └──► failed
 ```
 
 ---
 
-## Integration Points
+## Automatic Processes
 
-| Integration | Direction | Protocol | MVP Status |
-|---|---|---|---|
-| Jira | Bidirectional | REST API + webhook | Optional, Phase 1 import only |
-| Supabase Auth | AuthN | SDK | ✅ |
-| Cloudflare R2 | Storage | S3-compatible signed URLs | ✅ |
-| Sentry | Error monitoring | SDK | ✅ |
-| PostHog | Analytics | SDK | ✅ |
+### DB Triggers
+
+| Trigger | Fires On | Action | Why it exists |
+|---------|----------|--------|---------------|
+| `atcs_set_updated_at` | UPDATE on `atcs` | Sets `updated_at = now()` | Every ATC mutation should update the timestamp |
+| `atcs_refresh_tsv` | INSERT/UPDATE of title/tags on `atcs` | Rebuilds `tsvector` for full-text search | Keeps ATC search current without manual refresh |
+| AC auto-revert | Archive of last AC | Reverts story to `draft` | Enforces the ≥1 AC invariant automatically |
+
+### Cron Jobs
+
+None detected in the codebase.
+
+### Vercel `after()` Background Processes
+
+| Process | Trigger | What it does | Why it exists |
+|---------|---------|--------------|---------------|
+| Jira Import Runner | POST `/api/v1/imports` + DB insert | Pages Jira API, upserts stories + ACs | Long-running import must not block HTTP response |
+| (Future) Invite email | POST workspace invite | Would send via Resend | MVP logs to console only |
+
+### Webhooks
+
+None detected in the MVP.
 
 ---
 
-## System Triggers
+## External Integrations
 
-| Trigger | Action | Entity |
-|---|---|---|
-| First step result | Run → running | Run |
-| All steps passed | Run → passed | Run |
-| Any step failed | Run → failed | Run |
-| User aborts | Run → aborted | Run |
-| Module deleted | cascade `archived_at` | Module + descendants |
-| Bug filed | (optional) Jira sync | Bug |
+### Supabase (PostgreSQL + Auth + RLS)
+
+```
+Bunkai App ──► Supabase Client ──► Postgres
+                  │                      │
+                  │               + RLS policies
+                  │               + DB functions
+                  │
+           Auth: magic link,
+           email+password
+```
+
+- **Dependent flows:** ALL of them. Every API call resolves to a Supabase query.
+- **Failure behavior:** App is non-functional without DB. Auth stops, queries fail, RLS denies.
+- **Critical timeout:** Default Supabase client timeout. Retry on transient failures.
+- **Known quirk:** RLS policies are the authorization layer; if a policy typo grants too much, TS code has no second gate.
+
+### Jira
+
+```
+Bunkai ──► Jira REST API (paginated JQL queries)
+              │
+              ▼
+       Import: issues → user_stories + ACs
+```
+
+- **Dependent flows:** Import only (Flow 2). Not on critical read/write path.
+- **Failure behavior:** Import job fails with error collection. Existing data unaffected.
+- **Acceptable degradation:** Import unavailable → manual ATC creation works fine.
+- **Known quirks:** Pagination up to 1000 pages. JQL syntax varies. ADF markdown conversion is lossy.
+
+### Resend (Email — configured, not yet wired)
+
+- **Dependent flows:** None currently (invite emails log to console).
+- **Acceptable degradation:** N/A — not production-critical yet.
 
 ---
 
 ## Discovery Gaps
 
-- [ ] Live Supabase schema not queried (need `[DB_TOOL]` or migrate files)
-- [ ] Actual Jira workflows for Bug sync not mapped
-- [ ] Realtime propagation latency not measured
-- [ ] Agentic execution protocol not implemented (Phase 2)
-- [ ] CI/CD adapter import format not defined (Phase 2)
+- **Live DB schema not inspected** — this map was built from migration files and source code, not a live `information_schema` query. Edge cases in constraints (deferrable, partial indexes beyond known ones) may be undocumented.
+- **Live API not exercised** — endpoint inventory derived from route files. Actual request/response schemas may differ or include undocumented fields.
+- **Jira import error modes** — The import runner collects errors, but error types (rate limit, auth expiry, schema change) are not exhaustively documented.
+- **RLS policies not read** — Authorization rules derived from code, not from `pg_policies`. TS code may not match actual Postgres-enforced rules.
+- **Feature flag behavior** — `feature_flags` table exists but MVP usage in code is untraced.
+- **No cron jobs confirmed** — Supabase scheduled functions or Vercel CRON may exist beyond codebase analysis.

@@ -1,78 +1,96 @@
-# Business Feature Map — Bunkai (upex-bunkai-tms)
+# Bunkai — Business Feature Map
 
-> Generated: 2026-06-20 | Sources: target repo code scan, Jira PBIs, SRS, PRD, domain glossary
+```
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║              BUNKAI — Feature Catalog                          ║
+  ║      Every capability the system offers, mapped and ranked     ║
+  ╚══════════════════════════════════════════════════════════════════╝
+```
 
----
-
-## 1. Inventory summary
+## Inventory Summary
 
 | Category | Features | Status |
 |----------|----------|--------|
-| **Core** (authentication, workspace, projects, modules, US, AC, ATCs, tests) | 8 domains | Stable (implemented) |
-| **Secondary** (execution runs, defects, coverage/traceability, account/settings) | 4 domains | Stable (implemented) |
-| **Beta** (imports/Jira sync, QA guide) | 2 features | Partially implemented |
-| **Planned** (SSO OAuth, ATC propagation, tag filtering, activity feed, export snapshots, retained-leak tests) | 6+ features | In development |
+| Core | 10 | Stable |
+| Secondary | 5 | Stable |
+| Beta | 1 | Testing (Jira Import) |
+| Planned | 2 | In Development (email notifications, PAT rotation) |
 
 ---
 
-## 2. Feature catalog (by domain)
+## Feature Catalog (by Domain)
 
-### Domain: Authentication & Identity
+### Domain: Authentication & Session Management
 
-#### Feature: Email Magic Link Sign-in
+#### Feature: Email+Password Sign-up
 
 | Aspect | Value |
 |--------|-------|
 | **ID** | FEAT-AUTH-001 |
 | **Status** | Stable |
-| **Endpoints** | `POST /api/v1/auth/magic-link`, `POST /api/v1/auth/signup` |
-| **UI** | `/login` page (bilateral layout), `/auth/callback` |
-| **Users** | Unauthenticated visitors |
-| **Dependencies** | Supabase Auth (email OTP), Resend (email delivery) |
-| **Evidence** | `app/api/auth/magic-link/route.ts`, `app/(auth)/login/page.tsx` |
+| **Endpoints** | `POST /api/v1/auth/signup` |
+| **UI** | `/login` (sign-up form) |
+| **Users** | Public (unauthenticated) |
+| **Dependencies** | Supabase Auth |
+| **Evidence** | `app/api/v1/auth/signup/route.ts` |
 
 **Capabilities:**
-- [x] Send magic-link OTP via email
-- [x] Headless signup with PAT minting
-- [x] Session cookie via Supabase SSR
-- [x] `/auth/callback` route handler
+- [x] Create user account with email+password
+- [x] Auto-confirm account (no email verification)
+- [x] Return session cookie + minted PAT in response
+- [x] Rate limiting / brute-force protection? (not verified)
 
-#### Feature: PAT (Personal Access Token) Management
+#### Feature: Email+Password Sign-in
 
 | Aspect | Value |
 |--------|-------|
 | **ID** | FEAT-AUTH-002 |
 | **Status** | Stable |
-| **Endpoints** | `POST /api/v1/tokens`, `GET /api/v1/tokens`, `DELETE /api/v1/tokens/[id]` |
-| **UI** | Account settings section (BK-88) |
-| **Users** | Authenticated users with session |
-| **Dependencies** | SHA-256 hashing, Supabase DB |
-| **Evidence** | `app/api/tokens/route.ts`, `lib/api/pat.ts` |
+| **Endpoints** | `POST /api/v1/auth/signin` |
+| **UI** | `/login` (sign-in form) |
+| **Users** | Public |
+| **Dependencies** | Supabase Auth |
+| **Evidence** | `app/api/v1/auth/signin/route.ts` |
 
 **Capabilities:**
-- [x] Issue PAT (`bk_pat_*` prefix)
-- [x] List own tokens
-- [x] Revoke token (soft-delete)
-- [ ] Scope-based permission enforcement (partially — scope array exists but enforcement is incomplete per BK-117, BK-134)
+- [x] Authenticate with email+password
+- [x] Return session cookie + minted PAT
+- [ ] Account lockout after failed attempts? (not verified)
 
-#### Feature: OAuth Sign-in (GitHub / Google)
+#### Feature: Magic Link / OTP Sign-in
 
 | Aspect | Value |
 |--------|-------|
 | **ID** | FEAT-AUTH-003 |
-| **Status** | Planned |
-| **Endpoints** | N/A (not implemented) |
-| **UI** | Not built yet |
-| **Users** | Unauthenticated visitors |
-| **Dependencies** | Supabase Auth OAuth providers, GitHub OAuth app, Google Cloud OAuth |
-| **Evidence** | BK-3 (Story in backlog) |
+| **Status** | Stable |
+| **Endpoints** | `POST /api/v1/auth/magic-link` |
+| **UI** | `/login` (email form), `/auth/callback` |
+| **Users** | Public |
+| **Dependencies** | Supabase Auth, Resend (configured) |
+| **Evidence** | `app/api/v1/auth/magic-link/route.ts` |
 
 **Capabilities:**
-- [ ] GitHub OAuth button
-- [ ] Google OAuth button
-- [ ] Account linking with existing email-based accounts
+- [x] Send OTP email with magic link
+- [x] Callback handler consumes token and sets session
+- [x] Replay protection via `magic_link_tokens.consumed_at`
+- [ ] Email delivery via Resend? (MVP logs to console)
 
----
+#### Feature: Session Introspection
+
+| Aspect | Value |
+|--------|-------|
+| **ID** | FEAT-AUTH-004 |
+| **Status** | Stable |
+| **Endpoints** | `GET /api/v1/me`, `POST /api/v1/me/active-workspace` |
+| **UI** | Header/nav (user info), workspace switcher |
+| **Users** | Authenticated |
+| **Dependencies** | Supabase Auth |
+| **Evidence** | `app/api/v1/me/route.ts` |
+
+**Capabilities:**
+- [x] Return current user + workspaces + active workspace
+- [x] Switch active workspace (cookie `bk_active_ws`)
+- [x] Detect auth method (cookie vs PAT)
 
 ### Domain: Workspace Management
 
@@ -82,103 +100,76 @@
 |--------|-------|
 | **ID** | FEAT-WS-001 |
 | **Status** | Stable |
-| **Endpoints** | `POST /api/v1/workspaces`, `GET /api/v1/workspaces`, `GET /api/v1/workspaces/[id]`, `PATCH /api/v1/workspaces/[id]` |
-| **UI** | `/onboarding` (first workspace), workspace switcher in sidebar |
+| **Endpoints** | `GET /api/v1/workspaces`, `POST /api/v1/workspaces`, `GET /api/v1/workspaces/{id}`, `PATCH /api/v1/workspaces/{id}` |
+| **UI** | `/onboarding` (first workspace), `/workspaces/{id}` (settings) |
 | **Users** | Authenticated users |
-| **Dependencies** | Supabase DB, RLS (workspace_members) |
-| **Evidence** | `app/api/workspaces/route.ts`, `app/api/workspaces/[id]/route.ts` |
+| **Dependencies** | Supabase (RPC `bunkai_bootstrap_workspace`) |
+| **Evidence** | `app/api/v1/workspaces/route.ts`, `app/api/v1/workspaces/[id]/route.ts` |
 
 **Capabilities:**
-- [x] Create workspace (auto-bootstrap via trigger on auth.users INSERT)
-- [x] List workspaces for current user
-- [x] Get workspace detail
-- [x] Update workspace name/settings
-- [x] Switch active workspace (`POST /api/v1/me/active-workspace`)
-- [ ] Leave workspace (BK-90 — Story pending)
+- [x] Create workspace (bootstrap: workspace + owner membership atomically)
+- [x] List user's workspaces
+- [x] View workspace details
+- [x] Update workspace name
+- [ ] Delete workspace (not exposed in endpoints)
+- [ ] Change workspace plan (community → cloud → enterprise)
 
-#### Feature: Workspace Invites & Roles
+#### Feature: Workspace Invites
 
 | Aspect | Value |
 |--------|-------|
 | **ID** | FEAT-WS-002 |
-| **Status** | Stable (with known bugs) |
-| **Endpoints** | `POST /api/v1/workspaces/[id]/invites`, `GET /api/v1/workspaces/[id]/invites`, `POST /api/v1/workspaces/[id]/invites/[inviteId]`, `DELETE /api/v1/workspaces/[id]/invites/[inviteId]`, `POST /api/v1/invites/accept` |
-| **UI** | `/invites` (pending + inbound), `/members` (member list) |
-| **Users** | Workspace admins (create/rotate/revoke), authenticated (accept) |
-| **Dependencies** | Resend (invite email), Supabase DB, RLS |
-| **Evidence** | `app/api/workspaces/[id]/invites/route.ts`, `app/api/invites/accept/route.ts` |
+| **Status** | Stable |
+| **Endpoints** | `GET /api/v1/workspaces/{id}/invites`, `POST /api/v1/workspaces/{id}/invites`, `POST /api/v1/invites/accept` |
+| **UI** | `/invites/accept?token=...`, workspace settings panel |
+| **Users** | Admins/owners (issue), any user (accept) |
+| **Dependencies** | Supabase, Resend (future) |
+| **Evidence** | `app/api/v1/workspaces/[id]/invites/route.ts`, `app/api/v1/invites/accept/route.ts` |
 
 **Capabilities:**
-- [x] Invite member by email with role
-- [x] List pending invites
-- [x] Rotate invite token
-- [x] Revoke invite
-- [x] Accept invite with token
-- [x] Roles: viewer, member, admin, owner
-- [x] Auto-assign admin role to workspace creator
-- [x] `bootstrap_first_workspace()` trigger on auth signup
+- [x] Issue invite by email + role (7-day expiry)
+- [x] Accept invite with raw token (email must match)
+- [x] No-demotion rule (reject if existing role ≥ invite role)
+- [x] Revoke invite (implied via sibling endpoint)
+- [ ] Email notification on invite (MVP logs to console)
 
-**Known bugs:** BK-60 (no email uniqueness check against active members), BK-61 (duplicate invites allowed), BK-62 (role overwrite on accept via upsert)
-
----
-
-### Domain: Project & Module Hierarchy
+### Domain: Project & Module Tree
 
 #### Feature: Project CRUD
 
 | Aspect | Value |
 |--------|-------|
-| **ID** | FEAT-PROJ-001 |
+| **ID** | FEAT-PRJ-001 |
 | **Status** | Stable |
-| **Endpoints** | `POST /api/v1/workspaces/[id]/projects` |
-| **UI** | `/projects` listing, project workbench |
+| **Endpoints** | `POST /api/v1/workspaces/{id}/projects` |
+| **UI** | `/projects` (list + create) |
 | **Users** | Workspace members |
-| **Dependencies** | Supabase DB, modules, user_stories, ATCs |
-| **Evidence** | `app/api/workspaces/[id]/projects/route.ts` |
+| **Dependencies** | Workspace |
+| **Evidence** | `app/api/v1/workspaces/[id]/projects/route.ts` |
 
 **Capabilities:**
-- [x] Create project with slug + name inside workspace
-- [x] List projects for workspace
-- [x] View project workbench (module tree + ATC table)
+- [x] Create project within workspace (unique slug per workspace)
+- [ ] List projects (via GET workspaces/{id} or dedicated endpoint)
+- [ ] Update project? (not verified)
+- [ ] Delete project? (not verified)
 
-#### Feature: Module Tree (Nested, 6-level max)
+#### Feature: Module Tree Management
 
 | Aspect | Value |
 |--------|-------|
 | **ID** | FEAT-MOD-001 |
 | **Status** | Stable |
-| **Endpoints** | `POST /api/v1/projects/[id]/modules`, `PATCH /api/v1/modules/[id]`, `DELETE /api/v1/modules/[id]` |
-| **UI** | Module tree in project workbench |
-| **Users** | Workspace members |
-| **Dependencies** | Supabase DB, materialized path, recursive CTEs |
-| **Evidence** | `app/api/projects/[id]/modules/route.ts`, `app/api/modules/[id]/route.ts` |
+| **Endpoints** | `POST /api/v1/projects/{id}/modules`, `PATCH /api/v1/modules/{id}`, `DELETE /api/v1/modules/{id}`, `POST /api/v1/modules/{id}/move` |
+| **UI** | `/projects/{projectSlug}` (tree explorer panel) |
+| **Users** | Workspace members (viewer read-only) |
+| **Dependencies** | Project |
+| **Evidence** | `app/api/v1/projects/[id]/modules/route.ts`, `app/api/v1/modules/[id]/route.ts` |
 
 **Capabilities:**
-- [x] Create module with name + optional parent
-- [x] Rename module
-- [x] Move module to different parent (`move_module()` RPC)
-- [x] Soft-delete module (cascade to children via `soft_delete_module_cascade()`)
-- [x] Auto-computed materialized `path` column (max depth 6)
-- [x] Tree view with ACs + ATCs per-module count
-
-**Known bugs:** BK-67 (success toast suppressed at depth >= 5), BK-68 (1-char names pass client-side)
-
-#### Feature: Explorer Views — Tree, Table & Mind Map
-
-| Aspect | Value |
-|--------|-------|
-| **ID** | FEAT-MOD-002 |
-| **Status** | Planned |
-| **Endpoints** | N/A (frontend-only) |
-| **UI** | Not built yet |
-| **Users** | Workspace members |
-| **Evidence** | BK-98 (Story in backlog) |
-
-**Capabilities:**
-- [ ] Switch between tree / table / mind map views in hardened explorer
-- [ ] Tab-based navigation per-module (BK-147)
-
----
+- [x] Create module (auto-slug, depth-checked to max 6)
+- [x] Rename module + rebuild descendant paths (RPC)
+- [x] Move module to new parent (cycle-detected, depth-guarded)
+- [x] Soft-delete module subtree (recursive CTE archive)
 
 ### Domain: User Stories & Acceptance Criteria
 
@@ -188,21 +179,19 @@
 |--------|-------|
 | **ID** | FEAT-US-001 |
 | **Status** | Stable |
-| **Endpoints** | `POST /api/v1/modules/[id]/user-stories`, `GET /api/v1/modules/[id]/user-stories`, `GET /api/v1/user-stories/[id]`, `PATCH /api/v1/user-stories/[id]`, `DELETE /api/v1/user-stories/[id]` |
-| **UI** | User story form (create/edit) in project workbench |
+| **Endpoints** | `POST /api/v1/modules/{id}/user-stories`, `PATCH /api/v1/user-stories/{id}` |
+| **UI** | `/projects/{projectSlug}` (story list panel) |
 | **Users** | Workspace members |
-| **Dependencies** | Supabase DB, modules, Jira import (external_id linking) |
-| **Evidence** | `app/api/modules/[id]/user-stories/route.ts`, `app/api/user-stories/[id]/route.ts` |
+| **Dependencies** | Module tree |
+| **Evidence** | `app/api/v1/modules/[id]/user-stories/route.ts`, `app/api/v1/user-stories/[id]/route.ts` |
 
 **Capabilities:**
-- [x] Create user story anchored to a module
-- [x] List user stories per module
-- [x] Get user story detail
-- [x] Update title, description (Markdown)
-- [x] Soft-delete user story
-- [x] External ID linking (Jira issue key)
-- [x] Partial unique index on `user_stories(external_id)` WHERE NOT NULL
-- [x] `ready_to_test` status gate (`set_user_story_ready_to_test()` serialized RPC)
+- [x] Create user story in module
+- [x] Set story status (draft → ready_to_test with ≥1 AC gate)
+- [x] Soft-delete story
+- [x] Jira `external_id` linking (for import sync)
+- [ ] List stories by module
+- [ ] Story detail view
 
 #### Feature: Acceptance Criteria Management
 
@@ -210,544 +199,379 @@
 |--------|-------|
 | **ID** | FEAT-AC-001 |
 | **Status** | Stable |
-| **Endpoints** | `POST /api/v1/user-stories/[id]/acceptance-criteria`, `GET /api/v1/user-stories/[id]/acceptance-criteria`, `PATCH /api/v1/acceptance-criteria/[id]`, `DELETE /api/v1/acceptance-criteria/[id]` |
-| **UI** | AC list inside user story form |
+| **Endpoints** | `POST /api/v1/user-stories/{id}/acceptance-criteria`, `PATCH /api/v1/acceptance-criteria/{id}`, `DELETE /api/v1/acceptance-criteria/{id}` |
+| **UI** | Story detail panel (AC list) |
 | **Users** | Workspace members |
-| **Dependencies** | Supabase DB, user stories |
-| **Evidence** | `app/api/user-stories/[id]/acceptance-criteria/route.ts`, `app/api/acceptance-criteria/[id]/route.ts` |
+| **Dependencies** | User Story |
+| **Evidence** | `app/api/v1/user-stories/[id]/acceptance-criteria/route.ts`, `app/api/v1/acceptance-criteria/[id]/route.ts` |
 
 **Capabilities:**
-- [x] Create AC with title, description, position
-- [x] List ACs for a user story (ordered by position)
-- [x] Update AC
-- [x] Soft-delete AC
-- [x] Position-based ordering (`reorder_acs()` RPC, partial unique index)
+- [x] Create AC with auto-position (negative-parking rebalance)
+- [x] Move AC position (rebalance)
+- [x] Soft-delete AC (auto-reverts story to draft if last AC)
+- [x] Position integrity under concurrent writes
 
-#### Feature: Markdown Editor
+### Domain: ATC (Acceptance Test Cases)
 
-| Aspect | Value |
-|--------|-------|
-| **ID** | FEAT-MD-001 |
-| **Status** | Stable (with known bugs) |
-| **Endpoints** | N/A (frontend component) |
-| **UI** | Markdown editor component in user story form |
-| **Users** | Workspace members |
-| **Dependencies** | Custom `textarea` + byte counter |
-| **Evidence** | Markdown editor component |
-
-**Capabilities:**
-- [x] Write Markdown with preview
-- [x] Byte counter for content size
-
-**Known bugs:** BK-99 (50 KB limit not enforced server-side), BK-100 (90% warning threshold not implemented)
-
-#### Feature: Jira Import
-
-| Aspect | Value |
-|--------|-------|
-| **ID** | FEAT-IMP-001 |
-| **Status** | Beta |
-| **Endpoints** | `POST /api/v1/imports`, `GET /api/v1/imports`, `GET /api/v1/imports/[id]` |
-| **UI** | Import page/button (to be built) |
-| **Users** | Workspace members |
-| **Dependencies** | `jira.js` npm package, Jira REST API, Supabase DB |
-| **Evidence** | `app/api/imports/route.ts`, `app/api/imports/[id]/route.ts` |
-
-**Capabilities:**
-- [x] Enqueue Jira import job (async)
-- [x] List import jobs for workspace
-- [x] Poll import job status (SSE-ready)
-- [x] Import Jira epics → user stories with external_id linking
-- [x] One-active-import constraint per project
-
-**Known bugs:** BK-142 (Jira credentials not configured in staging → import fails with `jira_unauthorized`)
-
----
-
-### Domain: ATC Library (Acceptance Test Cases)
-
-#### Feature: ATC CRUD
+#### Feature: ATC Authoring
 
 | Aspect | Value |
 |--------|-------|
 | **ID** | FEAT-ATC-001 |
 | **Status** | Stable |
-| **Endpoints** | `POST /api/v1/atcs`, `PATCH /api/v1/atcs/[id]` |
-| **UI** | ATC table in project workbench, ATC builder |
-| **Users** | Workspace members |
-| **Dependencies** | Supabase DB, steps, assertions, AC bindings |
-| **Evidence** | `app/api/atcs/route.ts`, `app/api/atcs/[id]/route.ts` |
+| **Endpoints** | `POST /api/v1/atcs`, `PATCH /api/v1/atcs/{id}` |
+| **UI** | `/projects/{projectSlug}` (ATC editor with Monaco), `/projects/{projectSlug}/atcs/new` |
+| **Users** | Workspace members with `atc:write` scope |
+| **Dependencies** | Module, User Story, ACs |
+| **Evidence** | `app/api/v1/atcs/route.ts`, `app/api/v1/atcs/[id]/route.ts` |
 
 **Capabilities:**
-- [x] Create ATC with steps, assertions, AC bindings (via `create_atc_v1` RPC)
-- [x] Edit ATC with optimistic locking (`version` column, full replace)
-- [x] ATC layers: UI, API, Unit (tagged with `--layer-ui`, `--layer-api`, `--layer-unit`)
-- [x] Steps with position, content, input_data, expected
-- [x] Assertions with position, content
-- [x] AC-ATC bindings via `atc_acceptance_criteria` table
+- [x] Create ATC with steps + assertions + AC bindings (atomic RPC)
+- [x] Update ATC with full-replace of children (optimistic lock via `X-If-Match`)
+- [x] Anchoring moat: ATC must reference ≥1 AC belonging to the parent story
+- [x] Module validation: ATC module must be story's module or descendant
+- [x] Slug generation from module path
+- [x] Version increment (optimistic concurrency)
 
-**Known bugs:** BK-96 (PATCH returns 412 instead of 200 on happy path)
-
-#### Feature: ATC Search & Autocomplete
+#### Feature: ATC Search & Discovery
 
 | Aspect | Value |
 |--------|-------|
 | **ID** | FEAT-ATC-002 |
-| **Status** | Planned |
-| **Endpoints** | Not implemented |
-| **UI** | Search bar (not built) |
+| **Status** | Stable |
+| **Endpoints** | (implied via project-level queries) |
+| **UI** | `/projects/{projectSlug}` (ATC list/search, mind-map view) |
 | **Users** | Workspace members |
-| **Evidence** | BK-20 (Story in backlog) |
+| **Dependencies** | ATC data, TSV index |
+| **Evidence** | DB trigger `atcs_refresh_tsv` for full-text search |
 
 **Capabilities:**
-- [ ] Search ATCs by title, slug, tags
-- [ ] Autocomplete when chaining ATCs into a test
+- [x] Full-text search on ATC title + tags (tsvector)
+- [x] Filter by layer (UI/API/Unit)
+- [x] Filter by status
+- [x] Filter by module
+- [x] Tag-based organization
 
-#### Feature: ATC Propagation & Usage Reporting
+#### Feature: ATC Status Tracking
 
 | Aspect | Value |
 |--------|-------|
 | **ID** | FEAT-ATC-003 |
-| **Status** | Planned |
-| **Endpoints** | Not implemented |
-| **UI** | "Used in N tests" report (BK-22), cascade on edit (BK-21) |
-| **Users** | Workspace members |
-| **Evidence** | BK-21, BK-22 (Stories in backlog) |
-
-**Capabilities:**
-- [ ] Cascade ATC edits to all tests using it
-- [ ] "Used in N tests" usage report
-
-#### Feature: ATC Duplicate
-
-| Aspect | Value |
-|--------|-------|
-| **ID** | FEAT-ATC-004 |
-| **Status** | Planned |
-| **Endpoints** | Not implemented |
-| **UI** | Duplicate button (not built) |
-| **Users** | Workspace members |
-| **Evidence** | BK-23 (Story in backlog) |
-
-**Capabilities:**
-- [ ] Duplicate ATC with steps and assertions
-
----
-
-### Domain: Tests (ATC Chains)
-
-#### Feature: Test Builder (Chain ATCs)
-
-| Aspect | Value |
-|--------|-------|
-| **ID** | FEAT-TEST-001 |
-| **Status** | Planned |
-| **Endpoints** | Not implemented |
-| **UI** | Test builder (not built) |
-| **Users** | Workspace members |
-| **Dependencies** | ATCs, order/reorder |
-| **Evidence** | BK-27, BK-28 (Stories in backlog) |
-
-**Capabilities:**
-- [ ] Assemble a test by chaining ATCs in order
-- [ ] Reorder ATCs inside a test
-
-#### Feature: Test View & Tags
-
-| Aspect | Value |
-|--------|-------|
-| **ID** | FEAT-TEST-002 |
-| **Status** | Planned |
-| **Endpoints** | Not implemented |
-| **UI** | Test detail view (not built) |
-| **Users** | Workspace members |
-| **Evidence** | BK-32, BK-33 (Stories in backlog) |
-
-**Capabilities:**
-- [ ] View test with all chained ATCs expanded
-- [ ] Assign reserved and custom tags
-
----
-
-### Domain: Manual Execution & Runs
-
-#### Feature: Run Execution (Manual)
-
-| Aspect | Value |
-|--------|-------|
-| **ID** | FEAT-RUN-001 |
-| **Status** | Planned |
-| **Endpoints** | Not implemented |
-| **UI** | Run execution page (not built) |
-| **Users** | Workspace members |
-| **Evidence** | BK-34, BK-35, BK-36, BK-37, BK-38, BK-39 (Stories in backlog) |
-
-**Capabilities:**
-- [ ] Start a manual run in a chosen environment
-- [ ] Mark each step pass / fail / block
-- [ ] Abort a run with reason
-- [ ] View past runs filtered by outcome
-- [ ] Filter project runs with pass/fail totals
-- [ ] Finish run with final verdict
-
----
-
-### Domain: Defect Management & Heatmap
-
-#### Feature: Defect Filing & List
-
-| Aspect | Value |
-|--------|-------|
-| **ID** | FEAT-DEF-001 |
-| **Status** | Planned |
-| **Endpoints** | Not implemented |
-| **UI** | Defect filing form, defect list, heatmap (not built) |
-| **Users** | Workspace members |
-| **Evidence** | BK-40, BK-41, BK-42, BK-43 (Stories in backlog) |
-
-**Capabilities:**
-- [ ] File a defect from a failing run step
-- [ ] List and filter defects by module, status, severity
-- [ ] View defect heatmap with week-over-week trend per module
-- [ ] Sync defects one-way to external tracker
-
----
-
-### Domain: Coverage & Traceability
-
-#### Feature: Traceability Chain
-
-| Aspect | Value |
-|--------|-------|
-| **ID** | FEAT-TRACE-001 |
-| **Status** | Planned |
-| **Endpoints** | Not implemented |
-| **UI** | Traceability view, coverage dashboard, activity feed, export (not built) |
-| **Users** | Workspace members |
-| **Evidence** | BK-45, BK-46, BK-47, BK-48, BK-49, BK-50 (Stories in backlog) |
-
-**Capabilities:**
-- [ ] Render full US → bug evidence chain
-- [ ] Surface untested ACs and modules with not-run filter
-- [ ] Compute time-to-green per user story
-- [ ] Filter chain by verdict, module, date range
-- [ ] Activity feed over existing activity_log
-- [ ] Export chain as read-only snapshot
-
----
-
-### Domain: Account & Settings
-
-#### Feature: Account Management
-
-| Aspect | Value |
-|--------|-------|
-| **ID** | FEAT-ACC-001 |
 | **Status** | Stable |
-| **Endpoints** | `GET /api/v1/me` |
-| **UI** | Account view (identity, role, sign out), settings hub |
-| **Users** | Authenticated users |
-| **Dependencies** | Supabase Auth, workspace_members |
-| **Evidence** | `app/api/me/route.ts`, account pages |
+| **Endpoints** | (via PATCH /atcs/{id} status field) |
+| **UI** | ATC detail view (status badge/changer) |
+| **Users** | Workspace members with `atc:write` |
+| **Dependencies** | ATC |
+| **Evidence** | Status lifecycle: unrun → running → pass/fail/blocked/skipped |
 
 **Capabilities:**
-- [x] View identity + role
-- [x] Sign out
-- [x] View workspaces I belong to
-- [x] Manage PATs (FEAT-AUTH-002)
-- [x] Settings hub
+- [x] Set ATC status (any → any transition allowed)
+- [x] Activity log records each status change
+- [ ] Status lifecycle enforcement? (DB allows all transitions — no gate)
 
-#### Feature: Workspace Membership Management
+### Domain: Personal Access Tokens (PAT)
+
+#### Feature: PAT Issuance & Revocation
 
 | Aspect | Value |
 |--------|-------|
-| **ID** | FEAT-ACC-002 |
+| **ID** | FEAT-PAT-001 |
 | **Status** | Stable |
-| **Endpoints** | `PATCH /api/v1/me/active-workspace` |
-| **UI** | Workspace switcher, leave workspace |
-| **Users** | Authenticated users |
-| **Dependencies** | Supabase DB |
-| **Evidence** | `app/api/me/active-workspace/route.ts` |
+| **Endpoints** | `POST /api/v1/tokens`, `GET /api/v1/tokens`, `DELETE /api/v1/tokens/{id}` |
+| **UI** | User settings / profile panel |
+| **Users** | Authenticated (browser session only — PAT cannot mint PAT) |
+| **Dependencies** | Supabase (sibling table for secret isolation) |
+| **Evidence** | `app/api/v1/tokens/route.ts`, `app/api/v1/tokens/[id]/route.ts` |
 
 **Capabilities:**
-- [x] View workspaces I belong to (inlined in GET /me)
-- [x] Switch active workspace
-- [ ] Leave workspace (BK-90 — Story pending)
+- [x] Issue `bk_pat_*` token with scoped permissions
+- [x] List caller's PATs (without secret — shown once on creation)
+- [x] Soft-revoke PAT (sets `revoked_at`)
+- [x] Scopes: atc:read, atc:write, run:execute, workspace:admin
+- [x] Browser-session-only enforcement (PAT cannot create PAT)
+
+### Domain: Jira Integration
+
+#### Feature: Jira Import
+
+| Aspect | Value |
+|--------|-------|
+| **ID** | FEAT-JIRA-001 |
+| **Status** | Beta |
+| **Endpoints** | `POST /api/v1/imports`, `GET /api/v1/imports/{id}` |
+| **UI** | `/projects/{projectSlug}` (import dialog) |
+| **Users** | Workspace members |
+| **Dependencies** | Jira API, Vercel `after()`, Supabase |
+| **Evidence** | `app/api/v1/imports/route.ts`, `lib/jira/import-runner.ts`, `lib/jira/client.ts` |
+
+**Capabilities:**
+- [x] Enqueue import job with JQL query (returns 202)
+- [x] One active import per project (partial unique index)
+- [x] Async import in Vercel after() background slot
+- [x] Jira ADF → Markdown conversion for AC content
+- [x] Upsert stories + ACs per Jira issue
+- [x] Poll job status + error details
+- [ ] Retry on failure? (not verified)
+- [ ] Email notification on completion? (not implemented)
+
+### Secondary Features
+
+#### Feature: Activity Log / Audit Trail
+
+| Aspect | Value |
+|--------|-------|
+| **ID** | FEAT-SYS-001 |
+| **Status** | Stable |
+| **Endpoints** | (implied, no dedicated endpoint found) |
+| **UI** | (none in MVP) |
+| **Users** | System (written by every mutation RPC) |
+| **Dependencies** | All write RPCs |
+| **Evidence** | `activity_log` table, written by each RPC |
+
+**Capabilities:**
+- [x] Log entity mutations (entity_type, entity_id, action, payload)
+- [x] Immutable log (no delete/update)
+- [ ] Read/query endpoint for activity log
+
+#### Feature: Idempotency
+
+| Aspect | Value |
+|--------|-------|
+| **ID** | FEAT-SYS-002 |
+| **Status** | Stable |
+| **Endpoints** | (transparent — applies to all POST endpoints) |
+| **UI** | None (behind-the-scenes) |
+| **Users** | System |
+| **Dependencies** | `idempotency_keys` table |
+| **Evidence** | `idempotency_keys` table schema |
+
+**Capabilities:**
+- [x] 24h TTL idempotency keys
+- [x] Scope: (user_id, endpoint, key)
+- [x] Response snapshot stored for repeat detection
+
+#### Feature: Feature Flags
+
+| Aspect | Value |
+|--------|-------|
+| **ID** | FEAT-SYS-003 |
+| **Status** | Stable (infrastructure only — MVP flags untraced in code) |
+| **Endpoints** | None |
+| **UI** | None |
+| **Users** | System (internal) |
+| **Dependencies** | `feature_flags` table |
+| **Evidence** | `feature_flags` table: global | workspace scoped with overrides |
+
+**Capabilities:**
+- [x] Global feature flags (affect all workspaces)
+- [x] Workspace-scoped flags with per-workspace overrides
+- [ ] Feature flag admin UI? (not verified)
+- [ ] MVP feature flags actually used in code? (untraced)
+
+#### Feature: API Documentation
+
+| Aspect | Value |
+|--------|-------|
+| **ID** | FEAT-SYS-004 |
+| **Status** | Stable |
+| **Endpoints** | `GET /api/v1` (version banner), `GET /api/v1/health`, `/api/docs` (Scalar), `/api/openapi` (raw spec) |
+| **UI** | `/api/docs` (Scalar UI), `/qa` (testability guide) |
+| **Users** | Public (health, version), authenticated (docs) |
+| **Dependencies** | Scalar, OpenAPI spec |
+| **Evidence** | `app/api/v1/route.ts`, `app/api/docs/`, `app/qa/` |
+
+**Capabilities:**
+- [x] OpenAPI spec served at `/api/openapi`
+- [x] Interactive API docs via Scalar at `/api/docs`
+- [x] Health check endpoint
+- [x] Software Testability Guide page at `/qa`
 
 ---
 
-### Miscellaneous
-
-#### Feature: API Interactive Docs
-
-| Aspect | Value |
-|--------|-------|
-| **ID** | FEAT-DOC-001 |
-| **Status** | Stable |
-| **Endpoints** | `GET /api/openapi` (serves `public/openapi.json`) |
-| **UI** | `/api/docs` (Scalar API Reference) |
-| **Users** | Developers, QA |
-| **Dependencies** | `@scalar/api-reference-react`, `@asteasolutions/zod-to-openapi` |
-| **Evidence** | `app/api/docs/page.tsx`, `lib/openapi/registry.ts` |
-
-**Capabilities:**
-- [x] Auto-generated OpenAPI spec from Zod schemas
-- [x] Interactive API reference UI
-
-#### Feature: QA Guide
-
-| Aspect | Value |
-|--------|-------|
-| **ID** | FEAT-DOC-002 |
-| **Status** | Stable (static page) |
-| **Endpoints** | N/A |
-| **UI** | `/qa-guide` |
-| **Users** | QA engineers |
-| **Evidence** | `app/(app)/qa-guide/page.tsx` |
-
-**Capabilities:**
-- [x] In-app QA documentation
-
-#### Feature: Design Tokens Panel
-
-| Aspect | Value |
-|--------|-------|
-| **ID** | FEAT-DOC-003 |
-| **Status** | Stable |
-| **Endpoints** | N/A |
-| **UI** | `/design-tokens` |
-| **Users** | Developers, designers |
-| **Evidence** | `app/design-tokens/page.tsx` |
-
-**Capabilities:**
-- [x] Visual panel of all design tokens
-
----
-
-## 3. CRUD matrix
+## CRUD Matrix
 
 | Entity | Create | Read | Update | Delete | Evidence |
 |--------|--------|------|--------|--------|----------|
-| Workspace | ✅ | ✅ | ✅ | ❌ No UI | `/api/v1/workspaces` |
-| WorkspaceMember | ⚠️ Via invite | ✅ | ⚠️ Role via invite | ❌ (leave not implemented) | `/api/v1/workspaces/[id]/invites` |
-| Project | ✅ | ✅ | ❌ Not implemented | ❌ Not implemented | `/api/v1/workspaces/[id]/projects` |
-| Module | ✅ | ✅ | ✅ Rename/move | ⚠️ Soft-delete | `/api/v1/projects/[id]/modules` |
-| UserStory | ✅ | ✅ | ✅ | ⚠️ Soft-delete | `/api/v1/modules/[id]/user-stories` |
-| AcceptanceCriterion | ✅ | ✅ | ✅ | ⚠️ Soft-delete | `/api/v1/user-stories/[id]/acceptance-criteria` |
-| ATC | ✅ | ✅ (implied) | ✅ (version lock) | ❌ No delete endpoint | `/api/v1/atcs` |
-| ATC Step | ✅ (embedded) | ✅ (embedded) | ✅ (full replace) | ✅ (embedded full replace) | `/api/v1/atcs` |
-| ATC Assertion | ✅ (embedded) | ✅ (embedded) | ✅ (full replace) | ✅ (embedded full replace) | `/api/v1/atcs` |
-| PersonalAccessToken | ✅ | ✅ | ❌ | ✅ Revoke (soft) | `/api/v1/tokens` |
-| ImportJob | ✅ | ✅ | ❌ | ❌ | `/api/v1/imports` |
-| WorkspaceInvite | ✅ | ✅ | ⚠️ Rotate (POST) | ✅ | `/api/v1/workspaces/[id]/invites` |
+| User (auth) | ✅ Signup | ✅ Me | ❓ | ❓ | `POST /auth/signup`, `GET /me` |
+| Workspace | ✅ | ✅ | ✅ Name only | ❌ Not exposed | `POST /workspaces`, `PATCH /workspaces/{id}` |
+| WorkspaceMember | ✅ Invite | ✅ Via workspace | ❌ Role change? | ❌ Remove member? | `POST /invites` |
+| Project | ✅ | ✅ Via workspace | ❓ | ❓ | `POST /projects` |
+| Module | ✅ | ✅ Via project tree | ✅ Rename | ⚠️ Soft-delete | Module endpoints |
+| UserStory | ✅ | ✅ Via module | ⚠️ Status only | ⚠️ Soft-delete | Story endpoints |
+| AcceptanceCriterion | ✅ | ✅ Via story | ⚠️ Position only | ⚠️ Soft-delete | AC endpoints |
+| ATC | ✅ | ✅ Via module/story | ✅ Full replace | ⚠️ Soft-delete | ATC endpoints |
+| ATC Step | ✅ (with ATC) | ✅ (with ATC) | ✅ (full replace) | ✅ (full replace) | ATC create/update |
+| ATC Assertion | ✅ (with ATC) | ✅ (with ATC) | ✅ (full replace) | ✅ (full replace) | ATC create/update |
+| AccessToken (PAT) | ✅ | ✅ List (no secret) | ❌ | ⚠️ Soft-revoke | Token endpoints |
+| ImportJob | ✅ Enqueue | ✅ Poll status | ❌ | ❌ | Import endpoints |
+| ActivityLog | ✅ (auto) | ❌ No endpoint | ❌ | ❌ | DB only |
+| FeatureFlag | ❌ No endpoint | ❌ No endpoint | ❌ | ❌ | DB only |
+| UserViewState | ✅ (auto) | ✅ (auto) | ✅ (auto) | ❓ | `user_view_state` table |
 
-Legend: ✅ Full, ⚠️ Partial/conditional, ❌ Not available
-
----
-
-## 4. API endpoint inventory
-
-### Auth & Identity
-
-| Method | Endpoint | Purpose | Auth |
-|--------|----------|---------|------|
-| GET | `/api/v1/` | API version discovery | Public |
-| GET | `/api/v1/health` | Liveness probe | Public |
-| GET | `/api/v1/me` | Current user + workspaces | Session or PAT |
-| POST | `/api/v1/me/active-workspace` | Switch active workspace | Session or PAT |
-| POST | `/api/v1/auth/magic-link` | Send magic-link OTP | Public |
-| POST | `/api/v1/auth/signup` | Headless signup + PAT mint | Public |
-| POST | `/api/v1/tokens` | Issue PAT | Session |
-| GET | `/api/v1/tokens` | List tokens | Session |
-| DELETE | `/api/v1/tokens/[id]` | Revoke token | Session |
-
-### Workspaces
-
-| Method | Endpoint | Purpose | Auth |
-|--------|----------|---------|------|
-| POST | `/api/v1/workspaces` | Create workspace | Authenticated |
-| GET | `/api/v1/workspaces` | List workspaces | Authenticated |
-| GET | `/api/v1/workspaces/[id]` | Workspace detail | Authenticated |
-| PATCH | `/api/v1/workspaces/[id]` | Update workspace | Authenticated |
-| POST | `/api/v1/workspaces/[id]/projects` | Create project | Authenticated |
-| POST | `/api/v1/workspaces/[id]/invites` | Invite member | Admin |
-| GET | `/api/v1/workspaces/[id]/invites` | List pending invites | Authenticated |
-| POST | `/api/v1/workspaces/[id]/invites/[inviteId]` | Rotate invite | Admin |
-| DELETE | `/api/v1/workspaces/[id]/invites/[inviteId]` | Revoke invite | Admin |
-| POST | `/api/v1/invites/accept` | Accept invite | Public + token |
-
-### Projects & Modules
-
-| Method | Endpoint | Purpose | Auth |
-|--------|----------|---------|------|
-| POST | `/api/v1/projects/[id]/modules` | Create module | Authenticated |
-| PATCH | `/api/v1/modules/[id]` | Rename/move/update module | Authenticated |
-| DELETE | `/api/v1/modules/[id]` | Soft-delete module | Authenticated |
-
-### User Stories & ACs
-
-| Method | Endpoint | Purpose | Auth |
-|--------|----------|---------|------|
-| POST | `/api/v1/modules/[id]/user-stories` | Create user story | Authenticated |
-| GET | `/api/v1/modules/[id]/user-stories` | List user stories | Authenticated |
-| GET | `/api/v1/user-stories/[id]` | Get user story | Authenticated |
-| PATCH | `/api/v1/user-stories/[id]` | Update user story | Authenticated |
-| DELETE | `/api/v1/user-stories/[id]` | Soft-delete user story | Authenticated |
-| POST | `/api/v1/user-stories/[id]/acceptance-criteria` | Create AC | Authenticated |
-| GET | `/api/v1/user-stories/[id]/acceptance-criteria` | List ACs | Authenticated |
-| PATCH | `/api/v1/acceptance-criteria/[id]` | Update AC | Authenticated |
-| DELETE | `/api/v1/acceptance-criteria/[id]` | Soft-delete AC | Authenticated |
-
-### ATCs
-
-| Method | Endpoint | Purpose | Auth |
-|--------|----------|---------|------|
-| POST | `/api/v1/atcs` | Create ATC | Authenticated |
-| PATCH | `/api/v1/atcs/[id]` | Edit ATC (full replace, optimistic lock) | Authenticated |
-
-### Imports
-
-| Method | Endpoint | Purpose | Auth |
-|--------|----------|---------|------|
-| POST | `/api/v1/imports` | Enqueue Jira import | Authenticated |
-| GET | `/api/v1/imports` | List import jobs | Authenticated |
-| GET | `/api/v1/imports/[id]` | Poll import job (SSE-ready) | Authenticated |
+Legend: ✅ Full, ⚠️ Partial/conditional, ❌ Not available, ❓ Not verified
 
 ---
 
-## 5. UI component inventory
+## API Endpoint Inventory
+
+### Public
+
+| Method | Endpoint | Purpose | Auth |
+|--------|----------|---------|------|
+| GET | `/api/v1` | API version + docs links | Public |
+| GET | `/api/v1/health` | Health check | Public |
+| POST | `/api/v1/auth/magic-link` | Send OTP email | Public |
+| POST | `/api/v1/auth/signin` | Email+password sign-in | Public |
+| POST | `/api/v1/auth/signup` | Create account | Public |
+
+### Authenticated (cookie or PAT)
+
+| Method | Endpoint | Purpose | Scope |
+|--------|----------|---------|-------|
+| GET | `/api/v1/me` | Session introspection | Any |
+| POST | `/api/v1/me/active-workspace` | Switch workspace | Any |
+| GET | `/api/v1/workspaces` | List workspaces | Any |
+| POST | `/api/v1/workspaces` | Create workspace | Any |
+| GET | `/api/v1/workspaces/{id}` | Workspace detail | Any |
+| PATCH | `/api/v1/workspaces/{id}` | Update workspace | Any |
+| POST | `/api/v1/workspaces/{id}/projects` | Create project | Any |
+| GET | `/api/v1/workspaces/{id}/invites` | List invites | admin/owner |
+| POST | `/api/v1/workspaces/{id}/invites` | Issue invite | admin/owner |
+| POST | `/api/v1/invites/accept` | Accept invite | Any |
+| POST | `/api/v1/projects/{id}/modules` | Create module | member+ |
+| PATCH | `/api/v1/modules/{id}` | Rename module | member+ |
+| DELETE | `/api/v1/modules/{id}` | Archive module | member+ |
+| POST | `/api/v1/modules/{id}/move` | Move module | member+ |
+| POST | `/api/v1/modules/{id}/user-stories` | Create story | member+ |
+| PATCH | `/api/v1/user-stories/{id}` | Set story status | member+ |
+| POST | `/api/v1/user-stories/{id}/acceptance-criteria` | Create AC | member+ |
+| PATCH | `/api/v1/acceptance-criteria/{id}` | Move AC | member+ |
+| DELETE | `/api/v1/acceptance-criteria/{id}` | Archive AC | member+ |
+| **POST** | **`/api/v1/atcs`** | **Create ATC** | **atc:write** |
+| **PATCH** | **`/api/v1/atcs/{id}`** | **Update ATC** | **atc:write** |
+| POST | `/api/v1/imports` | Enqueue Jira import | member+ |
+| GET | `/api/v1/imports/{id}` | Poll import status | member+ |
+| POST | `/api/v1/tokens` | Issue PAT | Browser only |
+| GET | `/api/v1/tokens` | List PATs | Any |
+| DELETE | `/api/v1/tokens/{id}` | Revoke PAT | Browser only |
+
+---
+
+## UI Component Inventory
 
 ### Pages
 
-| Route | Component | Purpose | State |
-|-------|-----------|---------|-------|
-| `/login` | Login page (bilateral layout) | Email magic-link auth | Stable |
-| `/auth/callback` | Route handler | Supabase callback | Stable |
-| `/invites/accept` | Invite accept page | Accept workspace invite | Stable |
-| `/onboarding` | Onboarding flow | First workspace setup | Stable |
-| `/projects` | Project list page | Listing + navigation | Stable |
-| `/projects/[slug]` | Project workbench | Module tree + ATC table | Stable |
-| `/members` | Member management | Workspace member list | Stable |
-| `/invites` | Invite list | Pending/inbound invites | Stable |
-| `/qa-guide` | QA documentation page | Static guide | Stable |
-| `/design-tokens` | Design tokens panel | Visual token reference | Stable |
-| `/api/docs` | Scalar API reference | Interactive OpenAPI UI | Stable |
+| Route | Component / Page | Purpose |
+|-------|-----------------|---------|
+| `/` | Root | Redirect to `/projects` or `/login` |
+| `/login` | SignInPage | Email+password sign-in, magic-link form |
+| `/auth/callback` | AuthCallback | OTP callback handler |
+| `/onboarding` | OnboardingPage | First workspace creation |
+| `/projects` | ProjectIndexPage | List/create projects |
+| `/projects/{slug}` | ProjectWorkbench | Main workspace: module tree, ATC editor, story management, mind-map, import dialog |
+| `/projects/{slug}/atcs/new` | NewAtcGuidePage | ATC creation guide |
+| `/workspaces/{id}` | WorkspaceSettings | Workspace management |
+| `/invites/accept` | InviteAcceptPage | Accept workspace invitation |
+| `/qa` | TestabilityGuide | Software testability documentation |
+| `/api/docs` | ScalarApiDocs | Interactive API reference |
 
-### Forms
+### Key UI Components (from codebase)
 
-| Component | Feature | State |
-|-----------|---------|-------|
-| `user-story-form.tsx` | Create/edit user story | Stable |
-| Markdown editor | User story description | Stable (bugs BK-99, BK-100) |
-
-### Modals / Dialogs
-
-| Component | Feature | State |
-|-----------|---------|-------|
-| ATC builder | Create/edit ATC (assumed — shadcn dialog-based) | Stable |
-| Invite dialog | Invite member (assumed) | Stable |
-| Module create dialog | Create module (assumed) | Stable |
-
-### App Shell Components
-
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| Sidebar | `app/(app)/layout.tsx` | Navigation (dark, surface-1) |
-| Header | `app/(app)/layout.tsx` | App header + workspace switcher |
-| Module tree | Project workbench | Nested module navigation |
-| ATC table | Project workbench | Filterable ATC list |
-
-### Design System Components (shadcn)
-
-Button, Input, Select, Dialog, DropdownMenu, Tooltip, Tabs, Toast (sonner), Badge, Card, Table, Avatar, Separator.
+| Component | Type | Purpose |
+|-----------|------|---------|
+| TopNav | Navigation | Workspace switcher, user menu |
+| ModuleTree | Tree view | Hierarchical module navigation |
+| StoryList | List view | Stories under a module |
+| ACList | List | Acceptance criteria for a story |
+| AtcEditor | Code editor (Monaco) | ATC authoring with steps + assertions |
+| MindMapView | Visual | Graph view of ATCs and relationships |
+| ImportDialog | Modal | JQL input and import trigger |
+| InviteDialog | Modal | Send workspace invite |
 
 ---
 
-## 6. Third-party integrations
+## Third-Party Integrations
 
-| Service | Purpose | Package | Status | Features using it |
+| Service | Purpose | Package | Status | Features Using It |
 |---------|---------|---------|--------|-------------------|
-| **Supabase** | Database + Auth + Storage | `@supabase/supabase-js`, `@supabase/ssr` | Active | All features |
-| **Resend** | Transactional email (magic links, invites) | (SMTP/API) | Active | FEAT-AUTH-001, FEAT-WS-002 |
-| **Jira** | Issue import (Epic → US) | `jira.js` | Beta | FEAT-IMP-001 |
-| **Scalar** | API reference UI | `@scalar/api-reference-react` | Active | FEAT-DOC-001 |
-| **Vercel** | Deployment + serverless functions | — | Active | All features (infra) |
-| **GitHub OAuth** | Social login | Supabase Auth | Planned | FEAT-AUTH-003 |
-| **Google OAuth** | Social login | Supabase Auth | Planned | FEAT-AUTH-003 |
+| **Supabase** | Database, Auth, RLS, Storage | `@supabase/ssr`, `@supabase/supabase-js` | Active | ALL features |
+| **Jira** | Issue import | Custom (no SDK) | Beta | Jira Import |
+| **Resend** | Transactional email | `resend` | Configured, not wired | Future: invite notifications |
+| **Vercel** | Deployment, Edge Runtime, `after()` | `next/server` | Active | Jira Import (background), all pages |
+| **Scalar** | API docs UI | `@scalar/api-reference-react` | Active | API Documentation |
+| **Monaco Editor** | Code/text editing | `@monaco-editor/react` | Active | ATC Editor |
+| **Radix UI** | Headless UI primitives | `@radix-ui/*` | Active | Dialogs, dropdowns, tabs, tooltips |
+| **TanStack Table** | Data tables | `@tanstack/react-table` | Active | ATC/story listing |
+| **Lucide** | Icons | `lucide-react` | Active | All UI |
+| **Shiki** | Syntax highlighting | `shiki`, `react-markdown` | Active | Markdown rendering |
+| **n8n** | Workflow automation | MCP config | Configured, not used | Future |
 
 ---
 
-## 7. Feature flags and WIP
+## Feature Flags and WIP
 
-### Flags
+### Feature Flags
 
-No feature-flag system discovered in code. `feature_flags` table exists in schema (migration 0009) but no runtime checks found. Env-based toggling not observed beyond `NEXT_PUBLIC_*` conventions.
+| Flag | Description | Default | Scope |
+|------|-------------|---------|-------|
+| (No named flags found in MVP code) | Feature flag infrastructure exists but usage in code untraced | — | — |
 
-### Planned features (from Jira PBIs + code TODOs)
+### Planned / WIP Features
 
-| Feature | Evidence | Status |
-|---------|----------|--------|
-| OAuth sign-in (GitHub / Google) | BK-3 | Pending |
-| Explorer views (tree/table/mind map) | BK-98 | Pending |
-| Tab-based module navigation | BK-147 | Pending |
-| ATC search & autocomplete | BK-20 | Pending |
-| ATC propagation cascade | BK-21 | Pending |
-| ATC usage report | BK-22 | Pending |
-| ATC duplicate | BK-23 | Pending |
-| Test builder (chain ATCs) | BK-27, BK-28 | Pending |
-| Test view with expanded ATCs | BK-32 | Pending |
-| Test tags (reserved + custom) | BK-33 | Pending |
-| Manual run execution | BK-34–BK-39 | Pending |
-| Defect filing + list + heatmap | BK-40–BK-43 | Pending |
-| Traceability chain + coverage | BK-45–BK-50 | Pending |
-| Activity feed | BK-49 | Pending |
-| Export snapshots | BK-50 | Pending |
-| Leave workspace | BK-90 | Pending |
+| Feature | Evidence | Estimated Status |
+|---------|----------|-----------------|
+| Email notifications for workspace invites | Resend configured, invite endpoint logs to console | Near-term |
+| PAT rotation / expiry notifications | Token `expires_at` column exists but UI/notification not implemented | Future |
+| ATC bulk operations | No endpoint, no UI | Future |
+| Workspace deletion | No endpoint | Future |
+| Role change for members | PATCH on membership not exposed | Future |
+| Activity log viewer | Table exists, no read endpoint | Future |
 
 ---
 
-## 8. QA relevance
+## QA Relevance
 
-### Feature test coverage matrix
+### Feature Test Coverage Matrix
 
 | Feature ID | Unit | Integration | E2E | Status |
 |------------|------|-------------|-----|--------|
-| FEAT-AUTH-001 | ❌ | ❌ | ❌ | No tests |
-| FEAT-AUTH-002 | ❌ | ❌ | ❌ | No tests |
-| FEAT-WS-001 | ❌ | ❌ | ❌ | No tests |
-| FEAT-WS-002 | ❌ | ❌ | ❌ | No tests |
-| FEAT-PROJ-001 | ❌ | ❌ | ❌ | No tests |
-| FEAT-MOD-001 | ❌ | ❌ | ❌ | No tests |
-| FEAT-US-001 | ❌ | ❌ | ❌ | No tests |
-| FEAT-AC-001 | ❌ | ❌ | ❌ | No tests |
-| FEAT-ATC-001 | ❌ | ❌ | ❌ | No tests |
-| FEAT-IMP-001 | ❌ | ❌ | ❌ | No tests |
-| FEAT-MD-001 | ❌ | ❌ | ❌ | No tests |
-| FEAT-DOC-001 | ❌ | ❌ | ❌ | No tests |
+| FEAT-AUTH-001 (Sign-up) | ❌ | ❌ | ❌ | Not tested |
+| FEAT-AUTH-002 (Sign-in) | ❌ | ❌ | ❌ | Not tested |
+| FEAT-AUTH-003 (Magic Link) | ❌ | ❌ | ❌ | Not tested |
+| FEAT-AUTH-004 (Session) | ❌ | ❌ | ❌ | Not tested |
+| FEAT-WS-001 (Workspace CRUD) | ❌ | ❌ | ❌ | Not tested |
+| FEAT-WS-002 (Invites) | ❌ | ❌ | ❌ | Not tested |
+| FEAT-PRJ-001 (Project CRUD) | ❌ | ❌ | ❌ | Not tested |
+| FEAT-MOD-001 (Module Tree) | ❌ | ❌ | ❌ | Not tested |
+| FEAT-US-001 (User Stories) | ❌ | ❌ | ❌ | Not tested |
+| FEAT-AC-001 (AC Management) | ❌ | ❌ | ❌ | Not tested |
+| FEAT-ATC-001 (ATC Authoring) | ❌ | ❌ | ❌ | Not tested |
+| FEAT-ATC-002 (ATC Search) | ❌ | ❌ | ❌ | Not tested |
+| FEAT-ATC-003 (ATC Status) | ❌ | ❌ | ❌ | Not tested |
+| FEAT-PAT-001 (PAT Mgmt) | ❌ | ❌ | ❌ | Not tested |
+| FEAT-JIRA-001 (Jira Import) | ❌ | ❌ | ❌ | Not tested |
 
-### High-risk features
+### High-Risk Features (Priority Testing)
 
 | Feature | Risk | Reason |
 |---------|------|--------|
-| FEAT-AUTH-001 (Magic Link) | HIGH | Security — auth bypass locks out the entire system. Email delivery failures = no onboard. |
-| FEAT-AUTH-002 (PAT) | HIGH | Security — scope enforcement incomplete (BK-117, BK-134). Token leak = workspace compromise. |
-| FEAT-WS-002 (Invites) | CRITICAL | Security + data integrity — BK-60/61/62 bypass invite uniqueness and role enforcement. RLS gaps. |
-| FEAT-IMP-001 (Jira Import) | MEDIUM | Data loss — async import with no retry. Staging credentials missing (BK-142). |
-| FEAT-MD-001 (Markdown Editor) | LOW | Validation — upload limits not enforced (BK-99/100). Server-side bypass. |
-| FEAT-MOD-001 (Module Move) | MEDIUM | Data integrity — BK-57: rename+move not atomic. Partial state possible. |
+| FEAT-ATC-001 (ATC Authoring) | CRITICAL | Core entity — data integrity loss is unrecoverable |
+| FEAT-AUTH-001/002/003 (Auth) | CRITICAL | Single gate to all data — RLS-only auth means no TS fallback |
+| FEAT-MOD-001 (Module Tree) | CRITICAL | Cascade operations (rename path rebuild, subtree archive) affect all child data |
+| FEAT-AC-001 (AC Management) | HIGH | Auto-revert on last-AC-delete is a silent semantic change |
+| FEAT-WS-002 (Invites) | HIGH | Role escalation or demotion-bypass leaks write access |
+| FEAT-PAT-001 (PAT Mgmt) | HIGH | Token scope enforcement is the only gate between CLI agents and data |
+| FEAT-JIRA-001 (Jira Import) | MEDIUM | Async — partial commits, no failure notification to user |
 
 ---
 
-## 9. Discovery gaps
+## Discovery Gaps
 
-- **No automated tests exist** for any feature. Zero unit, integration, or E2E coverage. Assessment confirmed: maturity 0/4.
-- **No CI/CD pipelines** — no GitHub Actions workflows in target. Build/lint checks run locally only.
-- **OpenAPI spec is build-time generated** — no live spec served at runtime. `public/openapi.json` is force-static.
-- **Feature flags table exists in schema** (`feature_flags`) but no runtime usage found in code paths. Likely reserved for future use.
-- **Defect sync** (BK-43) mentions one-way external tracker sync — not yet implemented; target tracker not specified.
-- **ATC endpoints lack GET/list** — no GET `/api/v1/atcs` found. Listing assumed via project workbench UI.
-- **No GET /api/v1/projects** endpoint found — project listing assumed via workspace context UI.
-- **No GET /api/v1/projects/[id]** detail endpoint — project routes are limited to module creation only.
-- **SSO / OAuth** (BK-3) is planned but no code stubs found.
-- **PAT scope enforcement** is implemented in the schema (scopes array) and minting but enforcement per-route is incomplete (BK-117, BK-134 confirm workspace:admin scope leak).
-- **Activity feed** (BK-49) cites existing `activity_log` table — the data layer exists but no read-side API or UI is implemented.
+- **Feature flags usage untraced** — `feature_flags` table infrastructure exists but actual flag consumption in MVP code was not confirmed. Some features may be disabled via flags without being visible in the endpoint inventory.
+- **UI components not fully cataloged** — Only key components listed. A thorough UI audit (form inputs, validation, error states) is pending.
+- **Role-change and member-removal endpoints** — Not confirmed to exist. The invite endpoint creates members but there's no PATCH to change roles or DELETE to remove members.
+- **Project-level read endpoints** — `GET /projects` exists, but project detail and update/delete endpoints were not verified.
+- **ATC query/search endpoints** — ATC listing, filtering, and full-text search endpoints are implied by the UI but their exact API surface was not traced.
+- **Viewer role enforcement** — Confirmed at Postgres RLS level but the exact endpoint-level rejection behavior was not tested.
+- **Email delivery** — Resend is configured but invite/magic-link emails may log to console in MVP. Actual delivery status unknown.
+- **Plan upgrade path** — Workspace plan column exists (community → cloud → enterprise) but no endpoint or UI for upgrading was found.
