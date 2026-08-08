@@ -406,7 +406,7 @@ A member calls POST /atcs with a fully-formed payload (title, module*id, user*st
 
 ## References
 
-- [SRS API Contract — ATC paths](https://github.com/upexgalaxy67/upex-bunkai-tms/blob/main/.context/SRS/api-contracts.yaml#L268)
+- [SRS API Contract — ATC paths](https://github.com/upex-galaxy/upex-bunkai-tms/blob/main/.context/SRS/api-contracts.yaml#L268)
 - [Architect Annotation — BK-2 comment](https://jira.upexgalaxy.com/browse/BK-2?focusedCommentId=12473)
 
 ---

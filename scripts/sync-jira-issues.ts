@@ -744,7 +744,7 @@ function resolveProjectKey(): ResolvedProjectKey {
  * `upexgalaxy<N>.atlassian.net` host (the vanity domain does not serve the API),
  * so this is applied solely to generated markdown `/browse/` links.
  *
- *   https://upexgalaxy69.atlassian.net  ->  https://jira.upexgalaxy.com
+ *   https://upexgalaxy<N>.atlassian.net  ->  https://jira.upexgalaxy.com
  *
  * Any non-upexgalaxy instance is returned unchanged.
  */
@@ -1041,6 +1041,23 @@ function processNode(node: AdfNode): string {
       }
       return rows.join('\n');
     }
+
+    case 'taskList':
+      return (
+        node.content
+          ?.map((item) => {
+            const state = String(item.attrs?.state || 'TODO');
+            const box = state === 'DONE' ? '[x]' : '[ ]';
+            const inlineNodes = (item.content || []).filter(n => n.type !== 'taskList');
+            const nestedTaskList = (item.content || []).find(n => n.type === 'taskList');
+            const text = processInlineContent(inlineNodes);
+            const nested = nestedTaskList
+              ? `\n  ${processNode(nestedTaskList).split('\n').join('\n  ')}`
+              : '';
+            return `- ${box} ${text}${nested}`;
+          })
+          .join('\n') || ''
+      );
 
     case 'mediaSingle':
     case 'mediaGroup':

@@ -353,7 +353,7 @@ Un miembro llama a POST /atcs con un payload completamente formado (title, modul
 
 ## References
 
-- [SRS API Contract — ATC paths](https://github.com/upexgalaxy67/upex-bunkai-tms/blob/main/.context/SRS/api-contracts.yaml#L268)
+- [SRS API Contract — ATC paths](https://github.com/upex-galaxy/upex-bunkai-tms/blob/main/.context/SRS/api-contracts.yaml#L268)
 - [Architect Annotation — BK-2 comment](https://jira.upexgalaxy.com/browse/BK-2?focusedCommentId=12473)
 
 ---

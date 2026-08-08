@@ -8,19 +8,19 @@
 ## Project
 
 - **Project Key**: BK (Bunkai)
-- **Jira URL**: `https://upexgalaxy67.atlassian.net/`
+- **Jira URL**: `https://upexgalaxy71.atlassian.net/`
 - **TMS Provider**: Xray (Modality A)
 
 ## Authentication
 
 ```bash
 # acli authentication
-acli auth login --site upexgalaxy67.atlassian.net
+acli auth login --site upexgalaxy71.atlassian.net
 ```
 
 Required env vars (already in `.env`):
 ```
-ATLASSIAN_URL=https://upexgalaxy67.atlassian.net/
+ATLASSIAN_URL=https://upexgalaxy71.atlassian.net/
 ATLASSIAN_EMAIL=<email>
 ATLASSIAN_API_TOKEN=<api-token>
 ```
