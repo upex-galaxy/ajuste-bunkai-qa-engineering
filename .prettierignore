@@ -76,3 +76,6 @@ api/.openapi-config.json
 .playwright-mcp/
 .backups/
 .claude/worktrees/
+
+# ----- 2026-08-08 (sync) -----
+packages/decks/
