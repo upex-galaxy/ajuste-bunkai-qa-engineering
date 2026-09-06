@@ -3,32 +3,56 @@
   "templateRepo": "upex-galaxy/agentic-qa-boilerplate",
   "templateCommit": "6a751463e1445a8466bac3540fc9409d6f883965",
   "perComponentCommit": {
-    "skills": "cb141ab52d56c08b8ab4dd43ed1f36e86ddecc96",
-    "commands": "cb141ab52d56c08b8ab4dd43ed1f36e86ddecc96",
-    "scripts": "cb141ab52d56c08b8ab4dd43ed1f36e86ddecc96",
+    "skills": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
+    "commands": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
+    "scripts": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
     "docs": "cb141ab52d56c08b8ab4dd43ed1f36e86ddecc96",
-    "cli": "6a751463e1445a8466bac3540fc9409d6f883965",
+    "cli": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
     "vscode": "6a751463e1445a8466bac3540fc9409d6f883965",
     "husky": "db7ed7055b2734372d33cfbe83167d2c7c89e85d",
     "agents-docs": "6e3e33bf874838b049406728ab1ff3bec351149f",
     "claude-config": "6a751463e1445a8466bac3540fc9409d6f883965",
     "tooling": "6a751463e1445a8466bac3540fc9409d6f883965",
-    "env-template": "cb141ab52d56c08b8ab4dd43ed1f36e86ddecc96"
+    "env-template": "cb141ab52d56c08b8ab4dd43ed1f36e86ddecc96",
+    "agent-compatibility": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
+    "codex-config": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
+    "agent-root-config": "c9b7577f38677b4b339e545aa73c0525ceef7b4c"
   },
   "syncedComponents": [],
   "ignoreFileSync": {
     ".gitignore": {
-      "lastSyncedSha": "36a1a683d89bb8c2c9376a25ec204cbbdfd4c5a4",
+      "lastSyncedSha": "82195b81ce755d511e8da13bbd672adae0959232",
       "appendedLines": [
         "**/evidence/",
         ".template/claude-md.upstream.sha",
         "/.allure/",
         "/.agents/prompts/",
-        ".template/upstream-sha/"
+        ".template/upstream-sha/",
+        ".context/reports/*",
+        "!.context/reports/README.md",
+        ".env*",
+        "!.env.example",
+        ".claude/worktrees/",
+        ".backups*/",
+        ".template/last-apply.json",
+        ".context/PBI/*",
+        "!.context/PBI/README.md",
+        "!.context/PBI/templates/",
+        "!.context/PBI/epics/",
+        ".context/PBI/epics/*",
+        "!.context/PBI/epics/*/",
+        ".context/PBI/epics/*/*",
+        "!.context/PBI/epics/*/test-specs/",
+        ".agents/skills/*-workspace/",
+        ".agents/skills/playwright-cli/",
+        ".agents/skills/playwright-best-practices/",
+        ".agents/skills/resend-cli/",
+        "!skills-lock.json",
+        "!**/skills-lock.json"
       ]
     },
     ".prettierignore": {
-      "lastSyncedSha": "642f57f0d23c79095d66c0edd02994c983ec7ca9",
+      "lastSyncedSha": "2d65bedc55be87885be51510bc1b977c8aef67c2",
       "appendedLines": [
         "api/openapi*",
         "api/.openapi-config.json",
@@ -39,36 +63,50 @@
         ".playwright-mcp/",
         ".backups/",
         ".claude/worktrees/",
-        "packages/decks/"
+        "packages/decks/",
+        ".backups*/",
+        ".scratch/",
+        ".session/"
       ]
     }
   },
   "packageJsonSync": {
     "package.json": {
       "scripts": {
-        "lastSyncedSha": "289cab539646230914e9c7296cda4ba2f0d6da41",
+        "lastSyncedSha": "f043848877ffcc7e5865cedd022766333074efcc",
         "appliedKeys": [
           "env",
-          "vars:env:check"
-        ]
+          "vars:env:check",
+          "agents:compat",
+          "agents:compat:check",
+          "codex",
+          "context:hydrate",
+          "git:policy",
+          "jira:components",
+          "jira:url",
+          "tests:map"
+        ],
+        "keptKeys": {
+          "claude": "dotenv -o -e .env -- claude"
+        }
       },
       "devDependencies": {
-        "lastSyncedSha": "289cab539646230914e9c7296cda4ba2f0d6da41",
+        "lastSyncedSha": "f043848877ffcc7e5865cedd022766333074efcc",
         "appliedKeys": [
           "allure-js-commons"
         ]
       },
       "dependencies": {
-        "lastSyncedSha": "289cab539646230914e9c7296cda4ba2f0d6da41",
+        "lastSyncedSha": "f043848877ffcc7e5865cedd022766333074efcc",
         "appliedKeys": []
       },
       "lint-staged": {
-        "lastSyncedSha": "289cab539646230914e9c7296cda4ba2f0d6da41",
+        "lastSyncedSha": "f043848877ffcc7e5865cedd022766333074efcc",
         "appliedKeys": []
       }
     }
   },
-  "cliVersion": "7.0",
-  "lastSyncedAt": "2026-08-08T20:18:32.087Z",
+  "cliVersion": "8.4",
+  "lastSyncedAt": "2026-09-06T09:50:48.042Z",
   "variableSystemVersion": 1
 }

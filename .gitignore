@@ -146,3 +146,32 @@ dbhub.local.toml
 /.allure/
 /.agents/prompts/
 .template/upstream-sha/
+
+# ===== Cross-harness generated artifacts =====
+# Generated alias onto .agents/skills. Never edit or commit it.
+.claude/skills
+# Local recovery copy written by the cross-harness migration.
+.template/pre-agents-migration/
+
+# ----- 2026-09-06 (sync) -----
+.context/reports/*
+!.context/reports/README.md
+.env*
+!.env.example
+.claude/worktrees/
+.backups*/
+.template/last-apply.json
+.context/PBI/*
+!.context/PBI/README.md
+!.context/PBI/templates/
+!.context/PBI/epics/
+.context/PBI/epics/*
+!.context/PBI/epics/*/
+.context/PBI/epics/*/*
+!.context/PBI/epics/*/test-specs/
+.agents/skills/*-workspace/
+.agents/skills/playwright-cli/
+.agents/skills/playwright-best-practices/
+.agents/skills/resend-cli/
+!skills-lock.json
+!**/skills-lock.json

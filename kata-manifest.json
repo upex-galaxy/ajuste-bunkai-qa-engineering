@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "generatedAt": "2026-06-28T00:01:30.595Z",
+  "generatedAt": "2026-09-06T09:50:48.558Z",
   "components": {
     "api": [
       {
@@ -80,12 +80,23 @@
       }
     ]
   },
-  "preconditions": [],
+  "steps": [
+    {
+      "name": "ExampleSteps",
+      "file": "ExampleSteps.ts",
+      "relativePath": "tests\\components\\steps\\ExampleSteps.ts",
+      "methods": [
+        "authenticateUser",
+        "createTestResource",
+        "navigateAsAuthenticatedUser"
+      ]
+    }
+  ],
   "summary": {
     "totalComponents": 4,
     "totalATCs": 9,
     "apiComponents": 2,
     "uiComponents": 2,
-    "preconditionModules": 0
+    "stepsModules": 1
   }
 }
