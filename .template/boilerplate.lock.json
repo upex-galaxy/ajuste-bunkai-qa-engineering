@@ -6,14 +6,14 @@
     "skills": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
     "commands": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
     "scripts": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
-    "docs": "cb141ab52d56c08b8ab4dd43ed1f36e86ddecc96",
+    "docs": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
     "cli": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
     "vscode": "6a751463e1445a8466bac3540fc9409d6f883965",
     "husky": "db7ed7055b2734372d33cfbe83167d2c7c89e85d",
-    "agents-docs": "6e3e33bf874838b049406728ab1ff3bec351149f",
+    "agents-docs": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
     "claude-config": "6a751463e1445a8466bac3540fc9409d6f883965",
     "tooling": "6a751463e1445a8466bac3540fc9409d6f883965",
-    "env-template": "cb141ab52d56c08b8ab4dd43ed1f36e86ddecc96",
+    "env-template": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
     "agent-compatibility": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
     "codex-config": "c9b7577f38677b4b339e545aa73c0525ceef7b4c",
     "agent-root-config": "c9b7577f38677b4b339e545aa73c0525ceef7b4c"
@@ -107,6 +107,6 @@
     }
   },
   "cliVersion": "8.4",
-  "lastSyncedAt": "2026-09-06T09:50:48.042Z",
+  "lastSyncedAt": "2026-09-06T19:33:59.462Z",
   "variableSystemVersion": 1
 }
