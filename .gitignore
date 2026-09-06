@@ -175,3 +175,7 @@ dbhub.local.toml
 .agents/skills/resend-cli/
 !skills-lock.json
 !**/skills-lock.json
+
+# ===== Parity sync backups (bun run up) =====
+*.backup
+*.upstream
