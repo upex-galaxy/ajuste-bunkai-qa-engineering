@@ -76,6 +76,8 @@ environments:
 
 git_strategy:
   strategy: solo-main
+  meta:
+    strategy_source: chosen
   branches:
     production: main
     integration: null
@@ -88,3 +90,10 @@ git_strategy:
     direct_push_to_protected: confirm
     admin_bypass: false
     require_pr_reviews: null
+    accepted_divergences:
+      - field: admin_bypass
+        enforced: 'true'
+        reason: Solo-main repo with a single maintainer; the GitHub ruleset keeps OrganizationAdmin/User bypass active. Accepted as-is on 2026-10-06.
+      - field: main.require_code_owner_review
+        enforced: 'true'
+        reason: No CODEOWNERS file exists, so the rule is unsatisfiable outside bypass actors. Host setting kept as-is on 2026-10-06.
