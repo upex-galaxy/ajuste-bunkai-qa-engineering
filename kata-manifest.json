@@ -1,12 +1,12 @@
 {
   "version": "1.0",
-  "generatedAt": "2026-09-06T09:50:48.558Z",
+  "generatedAt": "2026-10-07T17:31:57.534Z",
   "components": {
     "api": [
       {
         "name": "AuthApi",
         "file": "AuthApi.ts",
-        "relativePath": "tests\\components\\api\\AuthApi.ts",
+        "relativePath": "tests/components/api/AuthApi.ts",
         "atcs": [
           {
             "id": "PROJ-101",
@@ -23,22 +23,17 @@
       {
         "name": "ExampleApi",
         "file": "ExampleApi.ts",
-        "relativePath": "tests\\components\\api\\ExampleApi.ts",
+        "relativePath": "tests/components/api/ExampleApi.ts",
         "atcs": [
           {
-            "id": "PROJ-101",
+            "id": "PROJ-121",
             "method": "createResourceSuccessfully",
             "line": 57
           },
           {
-            "id": "PROJ-102",
+            "id": "PROJ-122",
             "method": "createResourceWithInvalidData",
             "line": 88
-          },
-          {
-            "id": "PROJ-103",
-            "method": "getResourceSuccessfully",
-            "line": 113
           }
         ]
       }
@@ -47,15 +42,15 @@
       {
         "name": "ExamplePage",
         "file": "ExamplePage.ts",
-        "relativePath": "tests\\components\\ui\\ExamplePage.ts",
+        "relativePath": "tests/components/ui/ExamplePage.ts",
         "atcs": [
           {
-            "id": "PROJ-101",
+            "id": "PROJ-131",
             "method": "submitFormWithValidData",
             "line": 99
           },
           {
-            "id": "PROJ-102",
+            "id": "PROJ-132",
             "method": "submitFormWithInvalidEmail",
             "line": 122
           }
@@ -64,15 +59,15 @@
       {
         "name": "LoginPage",
         "file": "LoginPage.ts",
-        "relativePath": "tests\\components\\ui\\LoginPage.ts",
+        "relativePath": "tests/components/ui/LoginPage.ts",
         "atcs": [
           {
-            "id": "PROJ-101",
+            "id": "PROJ-111",
             "method": "loginSuccessfully",
             "line": 84
           },
           {
-            "id": "PROJ-102",
+            "id": "PROJ-112",
             "method": "loginWithInvalidCredentials",
             "line": 101
           }
@@ -84,7 +79,7 @@
     {
       "name": "ExampleSteps",
       "file": "ExampleSteps.ts",
-      "relativePath": "tests\\components\\steps\\ExampleSteps.ts",
+      "relativePath": "tests/components/steps/ExampleSteps.ts",
       "methods": [
         "authenticateUser",
         "createTestResource",
@@ -94,7 +89,7 @@
   ],
   "summary": {
     "totalComponents": 4,
-    "totalATCs": 9,
+    "totalATCs": 8,
     "apiComponents": 2,
     "uiComponents": 2,
     "stepsModules": 1

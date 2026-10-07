@@ -20,7 +20,7 @@
 
 ## 0. Design goals (the justification, up front)
 
-1. **One grammar, every altitude.** Today the same Jira "Test Plan" work type is titled
+1. **One grammar, every altitude.** The same Jira "Test Plan" work type is titled
    three different ways (`Test Plan: PROJ-123`, `QA: TestPlan: Regression S50`,
    `<Strategy>: <ID>: <sum>`). A reader/JQL cannot tell altitude from the title. The
    proposal gives every Plan and Run a **3-letter acronym prefix** so altitude + plan-vs-run
@@ -169,9 +169,9 @@ run/coverage engine on top.
 
 ---
 
-## 5. What changes vs today (migration map)
+## 5. What changes (migration map)
 
-| Today | Becomes | Why |
+| Before | Becomes | Why |
 |---|---|---|
 | `Test Plan: PROJ-123` (ATP, often a Story field) | `ATP: PROJ-123: {title}` (Test Plan item; field = fallback) | acronym grammar + items-first |
 | `Test Results: PROJ-123` (ATR field) | `ATR: PROJ-123: Story Testing` (Test Execution item) | acronym grammar + items-first + activity term |

@@ -40,7 +40,7 @@ Act as a Senior QA Engineer preparing a testing session for a ticket (User Story
 ### Input
 
 - `TICKET-ID` (required) — e.g. `{{PROJECT_KEY}}-123`.
-- Environment — defaults to `{{DEFAULT_ENV}}` (staging); ask if ambiguous. For an ad-hoc URL not in `project.yaml` (broken staging, ephemeral preview deploy, hotfix branch URL), record it as a session override instead of editing config — see Step 6b + the `WEB_URL_OVERRIDE` / `API_URL_OVERRIDE` slot.
+- Environment — defaults to `{{DEFAULT_ENV}}`; ask if ambiguous. For an ad-hoc URL not in `project.yaml` (broken staging, ephemeral preview deploy, hotfix branch URL), record it as a session override instead of editing config — see Step 6b + the `WEB_URL_OVERRIDE` / `API_URL_OVERRIDE` slot.
 
 ### Step 0 — Environment + inbox preflight (reachability gate)
 
@@ -103,6 +103,39 @@ This step is NON-BLOCKING:
 | Issue-tracker unavailable | Log warning, note "Comments not loaded", continue |
 | Step 1 failed entirely | Skip Step 1b, continue to Step 2 |
 
+### Step 1c — Deploy check (the deployed environment is truth, the tracker is a hint)
+
+Step 0 proved the environment answers. This step proves it runs the change under test. A status of
+{{jira.status.story.ready_for_qa}} says someone moved the ticket; it does not say the build on the
+active environment contains the merge. Testing a build without the change produces failures that get
+filed as defects against code that was never deployed, or passes that prove nothing about the ticket.
+For a Bug, the change is the FIX: the same check applies before retesting it.
+
+Gather two values, read-only:
+
+1. **The change's merge commit.** The PR linked from the ticket: the development panel, a remote
+   link, or a PR URL in the synced `comments.md`. Several PRs → every one of them.
+2. **The build the active environment runs.** Whatever the environment itself reports first (a
+   version or health endpoint, a response header, the build id in the app footer, a testability page
+   when the SUT exposes one); else the deploy record for that environment (the CI deploy job or the
+   hosting platform's deployment, with its commit). Where this project exposes it is the
+   `infra-context` map (`bun run context:map infra-context`); never a value copied from another
+   project.
+
+Compare them in the SUT repository: `git merge-base --is-ancestor <merge> <deployed>` in a clone
+(exit 0 = contained), or `gh api repos/<owner>/<repo>/compare/<merge>...<deployed> --jq .status`
+(`ahead` or `identical` = contained). Then one verdict:
+
+| Verdict | What happens |
+|---|---|
+| **CONTAINED** | continue. Record the deployed build id in `test-session-memory.md` §Environment; Stage 3 carries it into the ATR's environment line |
+| **NOT CONTAINED** | STOP before any ATP or Jira write. Surface it to the user with both ids: the tracker says ready, the environment does not have it. Never test it and never file a defect against the feature, because the feature is not there. The ticket is not testable yet |
+| **UNVERIFIED** (no build id exposed, or no merge linked) | do not block. Say which value was missing, record `deploy: UNVERIFIED (<what was missing>)` in `test-session-memory.md` §Environment, and include it in Step 2's explanation. Stage 2's smoke test becomes the first evidence: a smoke failure in this state is triaged as "not deployed?" before it is filed as a defect |
+
+A worker in a fleet reports the verdict in its stage report. An unattended routine that selects
+Stories for testing runs this check BEFORE opening a worker: `orca-orchestration/references/automations.md`
+§2.5.
+
 ### Step 2 — Explain the story to the user (REQUIRED, then WAIT)
 
 Stop and explain the story to the user. Provide a brief, easy-to-understand summary:
@@ -140,16 +173,16 @@ If team discussions reveal decisions that modify or extend the ACs, highlight th
 
 ### Step 3 — Load project context
 
-Read these files to understand the system:
+Read these to understand the system (the maps through their reader, never the raw HTML):
 
 ```
-.context/business/business-data-map.md       # business flows and state machines
-.context/business/business-feature-map.md    # feature catalog, CRUD matrix, integrations
-.context/business/business-api-map.md        # auth model, critical journey endpoints, external integrations
-.context/master-test-plan.md                # testing guide (what to test and why)
+bun run context:map business-data-context    # business flows, entities and state machines
+bun run context:map business-e2e-context     # user journeys, feature catalog, CRUD matrix, integrations
+bun run context:map business-api-context     # auth model, critical journey endpoints, external integrations
+.context/PBI/qa-artifacts/master-test-plan.md   # testing guide (what to test and why); cache of the MTP Epic
 ```
 
-These provide business flows, feature inventory, API contracts + authentication model, and the test strategy. If ALL four files are missing, stop and hand off to the `project-discovery` skill (or invoke the individual `/business-*-map` + `/master-test-plan` commands). Sprint-testing cannot plan without them.
+These provide business flows, journeys and feature inventory, API contracts + authentication model, and the test strategy. A command that prints the placeholder notice counts as missing: existence of the file is not enough. A missing MTP cache is first refreshed with `bun run context:hydrate` (the plan lives in Jira). If ALL four are still missing, stop and hand off to the `project-discovery` skill (or invoke the individual `project-context` modes `data` / `e2e` / `api` + `test-plan`). Sprint-testing cannot plan without them.
 
 ### Step 4 — Module context (3-level hierarchy)
 
@@ -207,7 +240,7 @@ Skip skills that are not configured for the project.
 ### Step 6 — Create the PBI structure
 
 ```
-.context/PBI/                          # ENTIRELY gitignored — a Jira cache (AGENTS.md §9)
+.context/PBI/                          # ENTIRELY gitignored — a Jira cache (`.agents/instructions/agent-local-context-pbi.md`)
   templates/                           # do not edit (committed)
     module-context-template.md
   epics/
@@ -285,7 +318,7 @@ Context loaded / Code explored / Environment
 ```markdown
 ## Session Initialized: {{PROJECT_KEY}}-{number}
 - Ticket / Module / ACs count / Team Discussions count
-- Project context loaded (all 3 files)
+- Project context loaded
 - Module context: loaded or created
 - Story context.md created
 - Next step: US workflow section below OR Bug workflow section below
@@ -298,7 +331,7 @@ Context loaded / Code explored / Environment
 | Ticket not found | Verify ID, check the issue tracker |
 | Env unreachable (404/410/5xx on root, dead deployment) | STOP at Step 0, surface to user, do NOT author an ATP; offer a session env override (Step 6b) |
 | Inbox send-only (email/auth story) | STOP at Step 0, surface to user; cannot complete magic-link flow without a receiving inbox |
-| Ticket not ready for testing | Wait for deployment |
+| Ticket not ready for testing, or Step 1c verdict NOT CONTAINED | Wait for deployment; surface both build ids to the user |
 | No ACs defined | Request ACs before testing |
 | No test data found | Expand query, ask user for alternatives |
 | Code not found | Search with alternative terms |
@@ -309,9 +342,9 @@ Context loaded / Code explored / Environment
 ### Behaviour reminders
 
 1. Always explain the story before proceeding.
-2. WAIT for user confirmation; never auto-advance (except sprint-wide sub-agent mode).
+2. WAIT for user confirmation; never auto-advance (a sub-agent, in either mode, writes the explanation to `test-session-memory.md` instead).
 3. All documentation and TMS content in English.
-4. ALWAYS load / create module context — do not skip exploration.
+4. Always load module context, or create and publish it when missing (Step 4).
 5. Persist everything into the PBI folder.
 6. Credentials always from `.env` — never hardcode.
 
@@ -336,7 +369,7 @@ After Session Start, run Stages 1 -> 2 -> 3 for the story. Then hand off to Stag
 
 - [ ] Session Start executed.
 - [ ] Story is "{{jira.status.story.ready_for_qa}}".
-- [ ] Feature deployed to the active env (`{{WEB_URL}}` / `{{API_URL}}`).
+- [ ] Feature deployed to the active env (`{{WEB_URL}}` / `{{API_URL}}`): Step 1c verdict CONTAINED, or UNVERIFIED and stated.
 - [ ] Project context files loaded.
 
 ### Stage 1 — Planning (overview)
@@ -353,13 +386,17 @@ Actions:
 1. Read the story (ACs, business rules, dependencies) from the synced `.md` (materialized by `bun run jira:sync-issues get <KEY> --include-comments`).
 2. Triage (veto or risk score) — outputs: Full Plan vs Quick Plan vs Skip.
 3. Discover test data via `[DB_TOOL]` on `{{DB_MCP}}` (and/or `[API_TOOL]`).
-4. **ATP item from the field (find-or-create)**: find-or-create the Test Plan item `ATP: {STORY-KEY}: {story title}` FROM the Story's `{{jira.acceptance_test_plan}}` field content — pre-sprint the ATP lives ONLY in the field (shift-left is field-first); author fresh (item + field) when the field is empty. Modality jira-native: write `{{jira.acceptance_test_plan}}` / fallback comment instead.
-5. Create the TCs per SKILL.md §"TC creation timing" (jira-xray: sprint `Test` issues at executable detail; jira-native: outlines only, no `Test` work items).
-6. **ATS (jira-xray)**: create/update the Story's `ATS: {US_ID}: {story title}` (parent **QA Test Artifacts**, components inherited from the Story — mandatory) holding ALL the Story's TCs (Xray-internal membership); link **ATS→Story** via the `test` slug — THE coverage link (fills the coverage panel).
+4. Create the TCs per SKILL.md §"TC creation timing" (jira-xray: sprint `Test` issues at executable detail; jira-native: outlines only, no `Test` work items).
+5. **ATS (jira-xray)**: create/update the Story's `ATS: {US_ID}: {story title}` (parent **QA Test Artifacts**, components inherited from the Story — mandatory) holding ALL the Story's TCs (Xray-internal membership PLUS one `TC→ATS` link per TC, `agentic-qa-core/references/traceability-linking.md` §9); link **ATS→Story** via the `test` slug — THE coverage link (fills the coverage panel).
+6. **ATP item from the field (find-or-create)**: find-or-create the Test Plan item `ATP: {STORY-KEY}: {story title}` FROM the Story's `{{jira.acceptance_test_plan}}` field content — pre-sprint the ATP lives ONLY in the field (shift-left is field-first); author fresh (item + field) when the field is empty. Modality jira-native: write `{{jira.acceptance_test_plan}}` / fallback comment instead. Set-first: the ATS comes first, the ATP item second (SKILL.md §"Stage 1 Set-first order").
 7. **ATR with environment**: create the ATR Execution (`ATR: {STORY-KEY}: Story Testing`) ALWAYS carrying the Test Environment from `active_env` (**no ATR without environment** — hard gate). Derive the ATP's and the ATR's test lists FROM the ATS membership — never three independent id lists. Link ATP→Story and ATR→Story (administrative traceability; zero coverage). Link ATP -> ATR.
 8. Fill Test Analysis in the ATP (scope, risks, scenarios, variables, test data, AC gaps).
-9. Verify: `[TMS_TOOL] trace {{PROJECT_KEY}}-{number}` (traceability stays on `[TMS_TOOL]`, not the sync).
-10. Mark ATP complete. Transition TCs to Ready.
+9. Verify: run the **three-edge check** (`agentic-qa-core/references/traceability-linking.md` §Traceability verification: Link List on Story + ATP + ATR, or `bun xray trace {{PROJECT_KEY}}-{number}`) (traceability reads stay on `[ISSUE_TRACKER_TOOL]` / `[TMS_TOOL]`, not the sync).
+10. **Statuses + ownership** (`agentic-qa-core/references/artifact-lifecycle.md` §1 + §2). Assignee = self on the ATP, the ATS, the ATR and every `Test`, set AT CREATE TIME (Xray refuses membership edits on a Plan the caller does not own). Then:
+     - each `Test`: `{{jira.transition.test_case.start_design}}` -> `{{jira.transition.test_case.ready_to_run}}` = `{{jira.status.test_case.ready}}`, parented to the **QA Test Repository** epic.
+     - ATP: `{{jira.transition.test_plan.designed}}` -> `{{jira.status.test_plan.ready}}`. **NOT `complete`** — the ATP is COMPLETED at Stage 3, once the ATR results are in.
+     - ATS stays `{{jira.status.test_set.designing}}` and ATR stays `{{jira.status.test_execution.active}}`: both close at Stage 3. State it, do not "fix" it.
+     On an unmapped slug run the §4 fallback (list LIVE transitions -> ONE AskUserQuestion -> live id -> recommend `bun run jira:sync-workflows`); never skip silently.
 11. Materialize the read-only cache (never hand-written) per modality: jira-native -> `bun run jira:sync-issues get <KEY> --include-comments` -> `acceptance-test-plan.md` in the STORY folder; jira-xray -> `bun run jira:sync-issues get <ATP_KEY>` -> `.context/PBI/test-plans/ATP-<ATP_KEY>-<slug>.md`. Filename note: the acronym prefix comes from a conforming ladder title; a Plan or Execution whose title does not follow the grammar keeps the legacy `TESTPLAN-` / `TESTEXEC-` / `RETESTEXEC-` prefix.
 
 Output checkpoint:
@@ -379,7 +416,7 @@ Reference: `references/exploration-patterns.md`.
 
 Actions:
 
-0. **Mark ticket as actively testing** (substrate-driven, idempotent, non-blocking): resolve `{{jira.transition.<work_type>.start_testing}}` and `{{jira.status.<work_type>.in_test}}` from `.agents/jira-workflows.json`; transition `<TICKET_KEY>` to the in-test state if it is not already there. Skip cleanly when the substrate has no in-test state for the work type (e.g. Bugs in this boilerplate's default substrate). Detail in `sprint-orchestration.md` Briefing 3 Step 1.
+0. **Mark ticket as actively testing** (substrate-driven, idempotent, non-blocking): resolve `{{jira.transition.<work_type>.start_testing}}` and `{{jira.status.<work_type>.in_test}}` from `.agents/jira-workflows.json`; transition `<TICKET_KEY>` to the in-test state if it is not already there. Skip cleanly when the substrate has no in-test state for the work type (e.g. a work type whose workflow has no in-test status). Detail in `sprint-orchestration.md` Briefing 3 Step 1.
 1. **Smoke test (5-10 min, ALWAYS FIRST)**: verify basic functionality works, no blocking errors. Go (proceed) or No-Go (STOP and report).
 2. **Deep exploration** as applicable:
    - UI on `{{WEB_URL}}` via `[AUTOMATION_TOOL]`.
@@ -439,7 +476,7 @@ Output checkpoint:
 USER STORY ({{PROJECT_KEY}}-XXX)
     |
     +--> ATS (ATS: {US_ID}: {story title})        <- `test` slug: THE coverage link (fills the panel)
-    |        holds ALL the Story's TCs (Xray-internal membership, never issue links in xray)
+    |        holds ALL the Story's TCs (a TC->ATS `test` link per TC, both modalities; + Xray membership in xray)
     |
     +--> ATP (ATP: {STORY-KEY}: {story title})    <- administrative link (zero coverage)
     |        test list DERIVED from the ATS
@@ -474,7 +511,7 @@ After Session Start, run Phase 1 -> Phase 2 -> Phase 3. Bugs use the same PBI fo
 
 | Ticket Status | Use this workflow? |
 |---------------|-------------------|
-| Deployed to staging | Yes — ready to retest |
+| Fix deployed to the active env (Step 1c verdict CONTAINED, or UNVERIFIED and stated) | Yes — ready to retest |
 | In Progress / Dev Complete (not yet {{jira.status.story.ready_for_qa}}) | No — wait for deployment |
 | Already tested | No — already verified |
 
@@ -616,7 +653,7 @@ Confirm ATP -> ticket, ATR -> ticket, ATP -> ATR are all linked. Missing-TCs "ga
 
 Detailed smoke / evidence-config / regression-check playbook lives in `references/exploration-patterns.md`. Bug-specific flow:
 
-1. **Configure evidence**: `.playwright/cli.config.json` `outputDir` -> `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-{{PROJECT_KEY}}-{number}-{brief-title}/evidence`. Remember `outputDir` does NOT apply to `.png` screenshots — always pass the full path in `--filename`.
+1. **Configure evidence**: never repoint the shared `.playwright/cli.config.json` `outputDir` (`agentic-qa-core/references/evidence-conventions.md` §1 Bucket A + §5). Pass the full destination path in `--filename` on every capture, resolving to `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-{{PROJECT_KEY}}-{number}-{brief-title}/evidence`. Remember `outputDir` does NOT apply to `.png` screenshots anyway — the full path is mandatory regardless. Open a named session for the ticket (`-s=<KEY>`) and `state-load` the role the repro needs (`agentic-qa-core/references/browser-sessions.md` §4).
 2. **Verify the fix**: navigate to the affected area -> reproduce original scenario -> observe the bug is GONE -> verify expected behaviour -> screenshot the correct behaviour. Evidence naming: `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-{{PROJECT_KEY}}-{number}-{brief-title}/evidence/{{PROJECT_KEY}}-{number}-{brief-description}.png`.
 2b. **Create the repro Test (Modality jira-xray only)** — now, at fix-verification time, per Step 1.5: ONE `Test` covering the repro scenario by default (1:N only if the scope genuinely covers distinct conditions — cite the test-design-doctrine justification), linked Bug↔Test via the `test` slug, added to the retest Execution. Modality jira-native: skip (defers to Stage 4).
 3. **Quick regression check**: adjacent features still work; similar scenarios still work; edge cases (empty / null / max) still handled. If a regression is found, document it and file a new bug.
@@ -626,7 +663,7 @@ Detailed smoke / evidence-config / regression-check playbook lives in `reference
 Templates (ATR body, QA comment Template C PASSED / Template D FAILED, evidence-attachment rules) live in `references/reporting-templates.md`. Bug-specific flow:
 
 1. **Automation opportunity assessment** — rate 0-2 each: Reproducibility, Stability, Risk, Frequency, Complexity. Totals: 8-10 HIGH / 5-7 MEDIUM / 0-4 LOW. Record suggested test type (E2E / API / DB) and effort (Low / Medium / High). The `test-documentation` skill will use this for the formal ROI decision.
-2. **Update ATR** — if none exists, create the retest Execution `ReTest: {BUG_KEY}: {summary}` (ALWAYS with the Test Environment from `active_env`). Fill with: ticket, environment, result (PASSED/FAILED), step-by-step verification, regression check, automation assessment. **Modality jira-xray**: record the repro Test's run in the retest Execution as PASSED/FAILED. Mark complete.
+2. **Update ATR** — if none exists, create the retest Execution `ReTest: {BUG_KEY}: {summary}` (ALWAYS with the Test Environment from `active_env`, and `assignee` = self — `agentic-qa-core/references/artifact-lifecycle.md` §2). Fill with: ticket, environment, result (PASSED/FAILED), step-by-step verification, regression check, automation assessment. **Modality jira-xray**: record the repro Test's run in the retest Execution as PASSED/FAILED, then CLOSE it: `[ISSUE_TRACKER_TOOL] Transition: {{jira.transition.re_test_execution.complete}}` (`active` -> `close`). "Mark complete" IS that transition — a retest Execution left at `{{jira.status.re_test_execution.active}}` reads as a verification still running. Unmapped slug -> `artifact-lifecycle.md` §4 fallback (ask, never skip).
 3. **Ticket status + comment** — PASSED: add verification summary via Template C, transition via `{{jira.transition.bug.retest_passed}}` (`ready_for_qa` -> `closed`). FAILED: add failure details via Template D, leave the bug in `{{jira.status.bug.ready_for_qa}}` and tag the developer; if the bug was already `{{jira.status.bug.closed}}` (regression caught after sign-off), use `{{jira.transition.bug.back}}` (`closed` -> `ready_for_qa`) or `{{jira.transition.bug.re_open}}` (any -> `open`) per project policy. ALWAYS prepare the comment BEFORE transitioning.
 4. **Evidence paths for the user** — after posting, tell them the 1-2 most important screenshot paths to attach (pick bug-showing-fix for PASSED; before/after for regressions; skip navigation screenshots).
 5. **Update local PBI `context.md`** — Type: Bug, Status VERIFIED/FAILED, Verified date, Bug Summary (Was/Now), Verification Result + evidence path, Automation Assessment (Candidate/Priority/Reason), Notes.

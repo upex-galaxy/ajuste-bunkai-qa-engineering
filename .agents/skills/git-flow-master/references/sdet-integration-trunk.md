@@ -123,6 +123,16 @@ gh pr merge --merge   # merge commit (--no-ff equivalent); NEVER squash here
 | **`--no-ff`** (merge commit), **never squash**, into the trunk | Preserves each ticket's commit detail so the consolidated history "reads like multiple branches merged." Squash here flattens the very history the suite wants to keep. |
 | **Sync gate** (`git merge origin/main`) before the final PR | The only thing that guarantees a clean `trunk → main` diff. See below. |
 
+### Several workers on one suite
+
+The loop above is written for one session walking the chain, and that remains the default. When a batch is worked by a fleet (`.agents/skills/test-automation/references/batch-fleet.md`), the shape changes in exactly three places and nowhere else:
+
+- **Ticket branches are cut from the trunk in parallel** — each worker in its own worktree, each branch off the trunk's then-current tip. Still never off another ticket branch.
+- **The trunk stays single-writer.** Only the conductor merges into it, one PR at a time, in an order it decides; a worker opens its PR and stops. Step 0's "start from a clean, up-to-date trunk" becomes the conductor's job between merges, and a worker whose branch is now behind re-merges the trunk into its branch rather than waiting.
+- **After each merge the conductor regenerates `kata-manifest.json`** and re-runs the suite on the merged state. Two green branches can be red together.
+
+The sync gate, the final PR, `--no-ff`, and the local double-env gate are unchanged — the double-env gate runs in each worker's own worktree.
+
 ---
 
 ## Reading the Sanity-CI gate (infra failures vs real test failures)
@@ -170,7 +180,7 @@ gh pr merge --merge
 
 - Prefix by content type per the repo branch convention: `docs/` (markdown, context, skills), `chore/` (tooling, config, deps), `fix/` (bugfixes). **Never `test/`** — that prefix is reserved for automation ticket branches.
 - One Plus Branch may batch several unrelated adjacent changes as long as they share a content type by predominance. If two content types are large, split into two Plus Branches.
-- **Working-tree carry-along caveat**: uncommitted changes follow you across `git checkout -b`. If you leave adjacent changes uncommitted while cutting a ticket branch, `git add .` discipline is required to avoid sweeping them into the ticket commit. When in doubt, `git stash` before cutting a ticket branch and pop onto a Plus Branch later.
+- **Working-tree carry-along caveat**: uncommitted changes follow you across `git checkout -b`. If you leave adjacent changes uncommitted while cutting a ticket branch, explicit-path `git add <path>` discipline is required to avoid sweeping them into the ticket commit. When in doubt, stash only your own paths (`git stash push -- <paths>`) before cutting a ticket branch and pop them onto a Plus Branch later — never an untargeted `git stash` (Critical Rule #15).
 
 > Owner-direct-to-`main` interaction: a project's standing "owner pushes docs directly to `main`" exception (if it has one) applies to adjacent work done **outside** an active suite. While a suite is in flight, adjacent work rides a Plus Branch into the trunk so the final `trunk → main` diff stays coherent.
 
@@ -259,7 +269,7 @@ A suite spans many ticket branches and multiple `/test-automation` invocations. 
 1. Pick the trunk name: `test/<module>-suite` (e.g. `test/monthly-statement-suite`).
 2. Cut it off `main` and push it so ticket PRs have a target. (The Branch operation does this on demand — the trunk is NOT created by Strategy Setup.)
 3. Confirm any prerequisite upstream PRs the trunk base already contains are queued to merge to `main` so the sync gate can later cancel them.
-4. Park current adjacent uncommitted work for a later Plus Branch (or `git stash` it) — keep it out of ticket branches.
+4. Park current adjacent uncommitted work for a later Plus Branch (or `git stash push -- <paths>` it) — keep it out of ticket branches.
 
 ## Per-ticket checklist
 

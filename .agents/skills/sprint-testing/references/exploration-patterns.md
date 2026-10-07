@@ -4,7 +4,7 @@
 
 Stage 2 Execution playbook for in-sprint manual / exploratory QA: smoke test, then UI / API / DB exploration as applicable to the ticket. Session notes written into the ticket PBI folder; bugs filed via `reporting-templates.md`.
 
-This reference is for IN-SPRINT manual execution RIGHT NOW. It does NOT cover:
+This reference is for IN-SPRINT manual execution (Stage 2). It does NOT cover:
 - Stage 1 planning, Discover-Modify-Generate data classification, test-outline naming, or traceability checks (see `acceptance-test-planning.md`).
 - Stage 5 automated-test coding patterns (see `test-automation`).
 - Stage 6 CI regression-suite execution (see `regression-testing`).
@@ -28,7 +28,7 @@ Every feature validates through up to three layers. Pick by feature type:
 
 ## Finding triage — blocking vs non-blocking (graduated pause)
 
-A FAIL found during deep exploration is NOT automatically a Critical bug and does NOT automatically halt the pass. Triage first, then decide whether to stop or keep going. Pausing the whole 17-TC pass on a cosmetic finding wastes the dispatch and loses coverage; a genuine blocker must still stop immediately.
+A FAIL found during deep exploration is NOT automatically a Critical bug and does NOT automatically halt the pass. Triage first, then decide whether to stop or keep going. Pausing the whole pass on a cosmetic finding wastes the dispatch and loses coverage; a genuine blocker must still stop immediately.
 
 | Finding class | Examples | Action |
 |---------------|----------|--------|
@@ -55,7 +55,9 @@ Deep-dive the UI on `{{WEB_URL}}` via `[AUTOMATION_TOOL]`. Goal: validate ACs, d
 | Screenshot | `[AUTOMATION_TOOL]` | Evidence |
 | Console + Network | `[AUTOMATION_TOOL]` | Observe errors / requests |
 
-Before any `[AUTOMATION_TOOL]` call, set `.playwright/cli.config.json` `outputDir` to `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/evidence/`. Screenshots still need the full path in `--filename` because `outputDir` does not apply to `.png`.
+Before any `[AUTOMATION_TOOL]` call, capture with an explicit destination path resolving to the ticket's `evidence/` folder — never repoint the shared `.playwright/cli.config.json` `outputDir` (see `agentic-qa-core/references/evidence-conventions.md` §1 Bucket B and §5). Screenshots still need the full path in `--filename` because `outputDir` does not apply to `.png`.
+
+**Session and login.** One named session per ticket (`-s=<KEY>`), in memory. The app's login comes from the role's state file, never from a login typed inside the exploration session: `open`, then `state-load <repo>/.auth/<env>-<role>.json`, then `goto`. Two roles = two sessions (`-s=<KEY>-admin`, `-s=<KEY>-member`). Missing file or a login page after `goto` → produce the file first (suite setup, or the one-off login recipe). Before the first session of the project, check `testing.browser.pair_mode` in `.agents/project.yaml` (`null` = ask once). `close` every session before reporting, and prove it with `playwright-cli list`. Canon: `agentic-qa-core/references/browser-sessions.md`.
 
 ### 1.2 Scenario loop (per AC)
 
@@ -125,7 +127,7 @@ curl -s -H "Authorization: Bearer $API_TOKEN_<ROLE>_<ENV>" "$API_BASE_URL/<path>
 
 ```
 OpenAPI MCP  list-api-endpoints
-  - source: {OpenAPI spec — local file or live URL, commonly the localhost backend}
+  - source: {OpenAPI spec — the full spec URL (commonly the localhost backend) or a file path relative to the repo root; never the endpoint route alone}
 
 OpenAPI MCP  get-api-endpoint-schema
   - endpoint: {method + path}
@@ -351,7 +353,7 @@ Two files are updated during Stage 2: `test-session-memory.md` (live log, in the
   test-session-memory.md      # Stage 2 live log (hand-authored)
 ```
 
-The whole PBI tree is a gitignored Jira cache (`AGENTS.md` §9). The live log sits in `.session/` so a re-sync cannot clobber it mid-execution.
+The whole PBI tree is a gitignored Jira cache (`.agents/instructions/agent-local-context-pbi.md`). The live log sits in `.session/` so a re-sync cannot clobber it mid-execution.
 
 ### 5.2 `test-session-memory.md` stage 2 block
 
@@ -411,7 +413,7 @@ At end of Stage 2, each Stage-1 test outline / TC must have PASSED or FAILED. No
 
 ## §6. Pre-flight checklist
 
-- [ ] Playwright / automation tool config `outputDir` set to `evidence/` folder BEFORE first action
+- [ ] Capture destination is an explicit full path into the ticket's `evidence/` folder per capture — the shared `.playwright/cli.config.json` `outputDir` is never repointed (§1.1, `agentic-qa-core/references/evidence-conventions.md` §1 Bucket A + §5)
 - [ ] Credentials pulled from `.env` (no hardcoding)
 - [ ] Smoke test ran FIRST and produced Go decision
 - [ ] Triforce layers selected based on feature type (UI / API / DB)
