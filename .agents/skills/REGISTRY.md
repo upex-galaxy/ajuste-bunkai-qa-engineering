@@ -1,6 +1,6 @@
 # Skill Registry (auto-generated)
 
-> Generated: `2026-10-06T21:45:30.735Z`
+> Generated: `2026-10-07T23:59:08.241Z`
 > Generator: `bun scripts/build-skill-registry.ts`
 > Protocol: `.agents/skills/agentic-qa-core/references/skill-resolver.md`
 
@@ -383,7 +383,7 @@ Skills indexed: 29
 - license: MIT
 - metadata:
 - author: currents.dev
-- version: "1.1"
+- version: "1.2"
 - ---
 - This skill provides comprehensive guidance for all aspects of Playwright test development, from writing new tests to debugging and maintaining existing test suites.
 - Consult these references based on what you're doing:
@@ -410,7 +410,7 @@ Skills indexed: 29
 - ---
 - name: playwright-cli
 - description: Automate browser interactions, test web pages and work with Playwright tests.
-- allowed-tools: Bash(playwright-cli:*) Bash(npx:*) Bash(npm:*)
+- allowed-tools: Bash(playwright-cli:*) Bash(npx playwright:*) Bash(npx --no-install playwright:*)
 - ---
 - playwright-cli open
 - playwright-cli goto https://playwright.dev
@@ -557,7 +557,7 @@ Skills indexed: 29
 - license: MIT
 - metadata:
 - author: resend
-- version: "2.0.1"
+- version: "2.15.0"
 - homepage: https://resend.com/docs/cli-agents
 - (truncated — read full SKILL.md for the rest)
 
