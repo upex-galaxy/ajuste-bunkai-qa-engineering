@@ -195,3 +195,6 @@ env.d.ts
 !.context/PBI/
 .agents/skills/skill-creator/
 .agents/skills/diagram-design/
+
+# ----- 2026-10-25 (sync) -----
+!.context/sprint/
