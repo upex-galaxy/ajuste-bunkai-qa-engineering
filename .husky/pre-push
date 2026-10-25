@@ -17,3 +17,9 @@ else
   echo "⚠️  .husky/framework-gates.sh missing — framework pre-push gates SKIPPED."
   echo "   Restore it with: bun sync"
 fi
+
+# Project-owned gates. `shared:check` and `board:check` only run inside
+# `bun run repo:check`, which no hook and no CI workflow calls — without this
+# line they were verified by hand and nothing else.
+bun run shared:check
+bun run board:check
