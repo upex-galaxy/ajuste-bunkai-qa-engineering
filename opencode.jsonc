@@ -39,9 +39,8 @@
   //   - @warp-dot-dev/opencode-warp: Warp terminal integration — surfaces
   //     OpenCode agent activity as native Warp notifications.
   //     Docs: https://docs.warp.dev/agent-platform/cli-agents/opencode/
-  //   - opencode-subagent-statusline: shows the active subagent in the status
-  //     line. Pure polish, no behavioral side effects.
-  "plugin": ["@warp-dot-dev/opencode-warp", "opencode-subagent-statusline"],
+  //   - @warp-dot-dev/opencode-warp@^0.2.0: Warp terminal integration (V2 API).
+  "plugins": ["@warp-dot-dev/opencode-warp"],
 
   "mcp": {
     "context7": {
