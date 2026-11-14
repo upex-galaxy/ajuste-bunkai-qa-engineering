@@ -49,7 +49,7 @@ table.
 "atlassian": {
   "command": "bunx",
   "args": [
-    "-p", "varlock@1.20.0", "varlock", "run", "--no-redact-stdout", "--inject", "vars",
+    "--no-install", "varlock", "run", "--no-redact-stdout", "--inject", "vars",
     "--filter", "ATLASSIAN_EMAIL,ATLASSIAN_API_TOKEN", "--",
     "sh", "-c",
     "JIRA_USERNAME=\"$ATLASSIAN_EMAIL\" JIRA_API_TOKEN=\"$ATLASSIAN_API_TOKEN\" exec uvx mcp-atlassian@0.23.1"
@@ -66,7 +66,7 @@ table.
 "atlassian": {
   "type": "local",
   "command": [
-    "bunx", "-p", "varlock@1.20.0", "varlock", "run", "--no-redact-stdout", "--inject", "vars",
+    "bunx", "--no-install", "varlock", "run", "--no-redact-stdout", "--inject", "vars",
     "--filter", "ATLASSIAN_EMAIL,ATLASSIAN_API_TOKEN", "--",
     "sh", "-c",
     "JIRA_USERNAME=\"$ATLASSIAN_EMAIL\" JIRA_API_TOKEN=\"$ATLASSIAN_API_TOKEN\" exec uvx mcp-atlassian@0.23.1"
@@ -87,7 +87,7 @@ command = "bunx"
 enabled = true
 startup_timeout_sec = 30
 args = [
-  "-p", "varlock@1.20.0", "varlock", "run", "--no-redact-stdout", "--inject", "vars",
+  "--no-install", "varlock", "run", "--no-redact-stdout", "--inject", "vars",
   "--filter", "ATLASSIAN_EMAIL,ATLASSIAN_API_TOKEN", "--",
   "sh", "-c",
   "JIRA_USERNAME=\"$ATLASSIAN_EMAIL\" JIRA_API_TOKEN=\"$ATLASSIAN_API_TOKEN\" exec uvx mcp-atlassian@0.23.1",
@@ -97,8 +97,9 @@ args = [
 JIRA_URL = "https://your-site.atlassian.net"
 ```
 
-Copy the `varlock@<pin>` from the shipped servers in the same file rather than from this page: it
-tracks the `varlock` devDependency. On Windows, where there is no `sh`, add `JIRA_USERNAME` /
+Copy the loader launch from the shipped servers in the same file rather than from this page: it
+names no version, because it runs the `varlock` your `bun install` put in `node_modules` (ADR-0018).
+On Windows, where there is no `sh`, add `JIRA_USERNAME` /
 `JIRA_API_TOKEN` to the schema and `.env` under those names and filter on them with
 `uvx mcp-atlassian@<version>` as the inner command; the parity check will then report the
 different `.env` dependency, which is the honest state of that machine.

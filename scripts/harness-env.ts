@@ -48,7 +48,7 @@ if (HELP) {
   process.stdout.write(`harness-env — retire the plaintext MCP credential copies
 
 MCP servers no longer read a copy of .env. Each one that needs .env values starts through
-  bunx -p varlock@<pin> varlock run --no-redact-stdout --inject vars --filter <its vars> -- <server>
+  bunx --no-install varlock run --no-redact-stdout --inject vars --filter <its vars> -- <server>
 in .mcp.json, opencode.jsonc and .codex/config.toml, so it reads .env (or the secret manager)
 itself, however the harness was launched. This command removes what the old generator left:
 the env block of .claude/settings.local.json and ${OPENCODE_SECRET_DIR}/.

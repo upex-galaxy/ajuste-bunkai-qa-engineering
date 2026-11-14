@@ -110,7 +110,7 @@
       <pre data-lang="json"><code>"openapi": {
   "command": "bunx",
   "args": [
-    "-p", "varlock@&lt;pin&gt;", "varlock", "run", "--no-redact-stdout",
+    "--no-install", "varlock", "run", "--no-redact-stdout",
     "--inject", "vars", "--filter", "API_BASE_URL,OPENAPI_SPEC_PATH", "--",
     "bunx", "-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"
   ]

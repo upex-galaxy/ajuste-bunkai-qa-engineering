@@ -333,7 +333,7 @@ const EXTERNAL_CLIS: ReadonlyArray<{ name: string, install?: string, docs: strin
     // `setup:doctor` run through `bunx`; that copy is NOT on the PATH a
     // harness gives an MCP server (measured: `bunx varlock` resolves from the
     // project, a bare `varlock` does not). The binary stays optional: the MCP
-    // `.env` loader runs `bunx -p varlock@<pin>`, which needs only bun.
+    // `.env` loader runs `bunx --no-install varlock`, which needs only bun.
     //
     // Install paths, per varlock.dev and the 1.20.0 release assets:
     //   macOS        brew install dmno-dev/tap/varlock

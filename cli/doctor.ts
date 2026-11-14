@@ -1113,7 +1113,7 @@ export async function runDoctor(): Promise<DoctorReport> {
 
   // The env schema verdict. Only an INVALID load is an action: a missing
   // standalone binary is reported in its section and never required: the MCP
-  // `.env` loader runs `bunx -p varlock@<pin>`.
+  // `.env` loader runs `bunx --no-install varlock`.
   if (report.env_schema.validation === 'invalid') {
     report.pending_actions.push({
       type: 'shell_command',

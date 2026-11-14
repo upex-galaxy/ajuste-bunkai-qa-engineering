@@ -4,7 +4,7 @@
   // OpenCode to read. Every server that needs .env values starts through the
   // .env loader:
   //
-  //   bunx -p varlock@1.20.0 varlock run --no-redact-stdout --inject vars --filter A,B -- <server>
+  //   bunx --no-install varlock run --no-redact-stdout --inject vars --filter A,B -- <server>
   //
   // which reads the varlock schema plus .env / .env.local (or the secret manager
   // the schema names) from the project root at spawn time and hands the server
@@ -33,19 +33,23 @@
   //   - MCP root key is "mcp"                  (NOT "mcpServers")
   //   - MCP env field is "environment"         (NOT "env")
   "$schema": "https://opencode.ai/config.json",
-
   // Plugins (project-only): upstream keeps these in the GLOBAL config, this
   // project keeps them here so the team shares one setup.
   //   - @warp-dot-dev/opencode-warp: Warp terminal integration — surfaces
   //     OpenCode agent activity as native Warp notifications.
   //     Docs: https://docs.warp.dev/agent-platform/cli-agents/opencode/
-  //   - @warp-dot-dev/opencode-warp@^0.2.0: Warp terminal integration (V2 API).
-  "plugins": ["@warp-dot-dev/opencode-warp"],
-
+  //   - @warp-dot-dev/opencode-warp@0.2.0: Warp terminal integration (V2 API).
+  "plugins": [
+    "@warp-dot-dev/opencode-warp@0.2.0"
+  ],
   "mcp": {
     "context7": {
       "type": "local",
-      "command": ["bunx", "-y", "@upstash/context7-mcp@4.0.3"],
+      "command": [
+        "bunx",
+        "-y",
+        "@upstash/context7-mcp@4.0.3"
+      ],
       "enabled": true
     },
     // The Slack bot MCP (Aurora). Its token and the reaction-channel allowlist
@@ -55,8 +59,7 @@
       "type": "local",
       "command": [
         "bunx",
-        "-p",
-        "varlock@1.20.0",
+        "--no-install",
         "varlock",
         "run",
         "--no-redact-stdout",
@@ -65,7 +68,8 @@
         "--filter",
         "SLACK_MCP_XOXP_TOKEN,SLACK_MCP_REACTION_TOOL",
         "--",
-        "bunx",
+        "bun",
+        "x",
         "-y",
         "slack-mcp-server@latest",
         "--transport",
@@ -86,8 +90,7 @@
       "type": "local",
       "command": [
         "bunx",
-        "-p",
-        "varlock@1.20.0",
+        "--no-install",
         "varlock",
         "run",
         "--no-redact-stdout",
@@ -96,7 +99,8 @@
         "--filter",
         "DBHUB_TYPE,DBHUB_HOST,DBHUB_PORT,DBHUB_DATABASE,DBHUB_USER,DBHUB_PASSWORD",
         "--",
-        "bunx",
+        "bun",
+        "x",
         "-y",
         "@bytebase/dbhub@1.2.1",
         "--config",
@@ -115,8 +119,7 @@
       "type": "local",
       "command": [
         "bunx",
-        "-p",
-        "varlock@1.20.0",
+        "--no-install",
         "varlock",
         "run",
         "--no-redact-stdout",
@@ -125,7 +128,8 @@
         "--filter",
         "API_BASE_URL,OPENAPI_SPEC_PATH",
         "--",
-        "bunx",
+        "bun",
+        "x",
         "-y",
         "@ivotoby/openapi-mcp-server@1.16.1",
         "--tools",
@@ -167,7 +171,6 @@
       }
     }
   },
-
   // Permissions — mirrors .claude/settings.json 1:1.
   // Rule precedence: last matching pattern wins, so deny entries are placed
   // AFTER the broad allows they override (e.g. `git *` allow, then
@@ -197,7 +200,6 @@
     },
     "bash": {
       "*": "ask",
-
       "bun *": "allow",
       "bunx *": "allow",
       "npm *": "allow",
@@ -205,10 +207,8 @@
       "pnpm *": "allow",
       "yarn *": "allow",
       "node *": "allow",
-
       "git *": "allow",
       "gh *": "allow",
-
       "ls *": "allow",
       "cat *": "allow",
       "echo *": "allow",
@@ -229,11 +229,9 @@
       "diff *": "allow",
       "jq *": "allow",
       "curl *": "allow",
-
       "playwright *": "allow",
       "allure *": "allow",
       "acli *": "allow",
-
       "rm -rf *": "deny",
       "wget *": "deny",
       "sudo rm *": "deny",
@@ -248,7 +246,6 @@
       "shred *": "deny",
       "dd if=*": "deny",
       "mkfs*": "deny",
-
       "* .env": "deny",
       "* .env *": "deny",
       "*/.env": "deny",

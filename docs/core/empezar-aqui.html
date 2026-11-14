@@ -430,7 +430,7 @@ bun setup</code></pre>
       </p>
       <pre
         data-lang="bash"
-      ><code>bunx -p varlock@&lt;pin&gt; varlock run --no-redact-stdout --inject vars --filter A,B -- &lt;servidor&gt;</code></pre>
+      ><code>bunx --no-install varlock run --no-redact-stdout --inject vars --filter A,B -- &lt;servidor&gt;</code></pre>
       <p>
         El loader lee el esquema de varlock y <code>.env</code> / <code>.env.local</code> (o el
         gestor de secretos que nombre el esquema) desde la raíz del proyecto en el momento en que

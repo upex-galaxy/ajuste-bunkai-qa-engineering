@@ -242,9 +242,9 @@ const SUPABASE_VARS = ['SUPABASE_ACCESS_TOKEN'];
 function loader(names: string[]): string[] {
   return mcpEnvLoaderArgs(names);
 }
-/** A host array literal (JSONC / TOML) for the loader args plus the inner `bunx`. */
+/** A host array literal (JSONC / TOML) for the loader args plus the inner `bun x`. */
 function loaderLiteral(names: string[]): string {
-  return [...loader(names), 'bunx'].map(arg => JSON.stringify(arg)).join(', ');
+  return [...loader(names), 'bun', 'x'].map(arg => JSON.stringify(arg)).join(', ');
 }
 
 /**
@@ -279,16 +279,16 @@ const MCP_SERVERS: Record<string, unknown> = {
   },
   'slack-aurora': {
     command: 'bunx',
-    args: [...loader(SLACK_VARS), 'bunx', '-y', 'slack-mcp-server@latest', '--transport', 'stdio'],
+    args: [...loader(SLACK_VARS), 'bun', 'x', '-y', 'slack-mcp-server@latest', '--transport', 'stdio'],
     env: { SLACK_MCP_ADD_MESSAGE_TOOL: 'true' },
   },
   'dbhub': {
     command: 'bunx',
-    args: [...loader(DBHUB_VARS), 'bunx', '-y', '@bytebase/dbhub@1.2.1', '--config', 'dbhub.toml'],
+    args: [...loader(DBHUB_VARS), 'bun', 'x', '-y', '@bytebase/dbhub@1.2.1', '--config', 'dbhub.toml'],
   },
   'openapi': {
     command: 'bunx',
-    args: [...loader(OPENAPI_VARS), 'bunx', '-y', '@ivotoby/openapi-mcp-server@1.16.1', '--tools', 'dynamic'],
+    args: [...loader(OPENAPI_VARS), 'bun', 'x', '-y', '@ivotoby/openapi-mcp-server@1.16.1', '--tools', 'dynamic'],
   },
   'postman': {
     type: 'http',
@@ -1523,9 +1523,18 @@ describe('project-declared MCP set', () => {
     expect(() => unwrapEnvLoader('bunx', [...mcpEnvLoaderArgs(['STRIPE_*']), 'bunx', 'pkg'])).toThrow('exact variable names');
   });
 
-  test('pins the loader to the exact varlock version the repo installs', () => {
+  test('runs the installed varlock, never a fresh install beside it', () => {
     const pkg = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')) as { devDependencies: Record<string, string> };
-    expect(MCP_ENV_LOADER_HEAD[1] as string).toBe(`varlock@${pkg.devDependencies.varlock}`);
+    // The version lives in ONE place: the devDependency `bunx` resolves.
+    expect(pkg.devDependencies.varlock).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(MCP_ENV_LOADER_HEAD[0]).toBe('--no-install');
+    expect(MCP_ENV_LOADER_HEAD[1]).toBe('varlock');
+    // A `-p varlock@<ver>` specifier extracts the package into the shared bunx
+    // temp dir on EVERY spawn, and the servers a host boots together race for
+    // that destination: all but one exit 1 with EBUSY (measured 2026-11-13).
+    expect(MCP_ENV_LOADER_HEAD.filter(entry => entry.startsWith('varlock@'))).toEqual([]);
+    expect(MCP_ENV_LOADER_HEAD).not.toContain('-p');
+    // A legacy Codex config keeps the old specifier: that is what recognizes it.
     expect(LEGACY_CODEX_ENV_LOADER_ARGS[1] as string).toBe(`varlock@${pkg.devDependencies.varlock}`);
     // JSON-RPC on stdio: varlock must not redact (rewrite) the server's output.
     expect(MCP_ENV_LOADER_HEAD).toContain('--no-redact-stdout');
@@ -1561,7 +1570,7 @@ describe('project-declared MCP set', () => {
     const { errors, warnings } = validateMcpParityFindings(root, { schemaOwner: false });
     expect(errors).toEqual([]);
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toStartWith('claude MCP openapi launch is out of date in .mcp.json: launch it as `bunx -p varlock@');
+    expect(warnings[0]).toStartWith('claude MCP openapi launch is out of date in .mcp.json: launch it as `bunx --no-install varlock run');
     expect(warnings[0]).toContain('--filter API_BASE_URL,OPENAPI_SPEC_PATH');
     expect(warnings[0]).toContain('drop the host-side reference to API_BASE_URL, OPENAPI_SPEC_PATH');
     expect(validateMcpParity(root, { schemaOwner: true }).some(e => e.startsWith('claude MCP openapi mismatch'))).toBe(true);

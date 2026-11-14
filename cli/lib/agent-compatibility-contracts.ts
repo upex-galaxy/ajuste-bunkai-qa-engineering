@@ -71,7 +71,7 @@ export const CODEX_HOOK_COMMAND_WINDOWS = 'powershell.exe -NoProfile -Command "$
  * The `.env` loader every MCP stdio server that needs `.env` values launches
  * through, on all three hosts:
  *
- *   bunx -p varlock@<pin> varlock run --no-redact-stdout --inject vars --filter A,B -- <server>
+ *   bunx --no-install varlock run --no-redact-stdout --inject vars --filter A,B -- <server>
  *
  * WHY A LOADER. A harness spawns its MCP servers from a config file, before any
  * hook runs, with whatever environment the harness process has, and no
@@ -95,9 +95,19 @@ export const CODEX_HOOK_COMMAND_WINDOWS = 'powershell.exe -NoProfile -Command "$
  *   --no-redact-stdout    the server speaks JSON-RPC on stdio, and varlock
  *                         redacts piped output by default, which rewrites any
  *                         message that carries a sensitive value.
- *   -p varlock@<pin>      names the package and tracks the exact `varlock`
- *                         devDependency, so the cache already holds it after
- *                         `bun install` and no standalone binary is needed.
+ *   --no-install          resolves the `varlock` ALREADY in `node_modules` (an
+ *                         exact devDependency, the one place the version is
+ *                         pinned) and refuses to fetch when it is missing.
+ *                         Without it, `bunx -p varlock@<pin>` extracted the
+ *                         package into ONE shared temp directory on every spawn
+ *                         (`%TEMP%/bunx-<uid>-varlock@<pin>`): the three servers
+ *                         a host boots at once raced for that destination and
+ *                         all but one exited 1 with `EBUSY: failed copying files
+ *                         from cache` on Windows (measured 2026-11-13), which
+ *                         reads as an MCP failure of whichever server lost the
+ *                         race — dbhub, openapi or slack-aurora, at random, on
+ *                         every cold boot. A missing dep now fails fast with
+ *                         `Could not find an existing 'varlock' binary to run`.
  *
  * The filter lists exact variable NAMES (no globs, negations or selectors), so
  * it is also the server's declared `.env` dependency set: parity compares it
@@ -110,7 +120,7 @@ export const CODEX_HOOK_COMMAND_WINDOWS = 'powershell.exe -NoProfile -Command "$
  */
 // LINT.IfChange(mcp-env-loader)
 export const MCP_ENV_LOADER_COMMAND = 'bunx';
-export const MCP_ENV_LOADER_HEAD = ['-p', 'varlock@1.20.0', 'varlock', 'run', '--no-redact-stdout', '--inject', 'vars', '--filter'] as const;
+export const MCP_ENV_LOADER_HEAD = ['--no-install', 'varlock', 'run', '--no-redact-stdout', '--inject', 'vars', '--filter'] as const;
 
 /** The full loader prefix for a server that needs `names`: head, the comma-joined filter, `--`. */
 export function mcpEnvLoaderArgs(names: readonly string[]): string[] {
@@ -263,8 +273,8 @@ const EVERY_HOST: Record<KnownMcpId, NormalizedMcpServer> = {
   'context7': server({ transport: 'stdio', command: 'bunx', args: ['-y', '@upstash/context7-mcp@4.0.3'] }),
   'slack-aurora': server({
     transport: 'stdio',
-    command: 'bunx',
-    args: ['-y', 'slack-mcp-server@latest', '--transport', 'stdio'],
+    command: 'bun',
+    args: ['x', '-y', 'slack-mcp-server@latest', '--transport', 'stdio'],
     // The server reads these two names itself and `.env` is the only place
     // they live: the reaction allowlist is a list of workspace channel ids,
     // never a committed value.
@@ -274,8 +284,8 @@ const EVERY_HOST: Record<KnownMcpId, NormalizedMcpServer> = {
   }),
   'dbhub': server({
     transport: 'stdio',
-    command: 'bunx',
-    args: ['-y', '@bytebase/dbhub@1.2.1', '--config', 'dbhub.toml'],
+    command: 'bun',
+    args: ['x', '-y', '@bytebase/dbhub@1.2.1', '--config', 'dbhub.toml'],
     // `dbhub.toml` interpolates these from the environment the server is
     // LAUNCHED with, and dbhub substitutes the literal `${DBHUB_HOST}` when a
     // variable is absent instead of failing at startup: the loader's filter is
@@ -285,8 +295,8 @@ const EVERY_HOST: Record<KnownMcpId, NormalizedMcpServer> = {
   }),
   'openapi': server({
     transport: 'stdio',
-    command: 'bunx',
-    args: ['-y', '@ivotoby/openapi-mcp-server@1.16.1', '--tools', 'dynamic'],
+    command: 'bun',
+    args: ['x', '-y', '@ivotoby/openapi-mcp-server@1.16.1', '--tools', 'dynamic'],
     envLoader: true,
     dependsOn: ['API_BASE_URL', 'OPENAPI_SPEC_PATH'],
   }),
@@ -694,13 +704,26 @@ function hostRefFix(names: readonly string[]): string {
 }
 
 /**
+ * The inner launch, with `bun x <args>` folded into the `bunx <args>` it is
+ * equivalent to. A downstream config written before the loader existed starts
+ * the server bare, where both spellings work and the only thing missing is the
+ * loader, which is what `launchGaps` reports. Under the loader the two are NOT
+ * interchangeable (a `bunx` child of `varlock run` is rejected on Windows), so
+ * the strict per-host shape keeps them apart.
+ */
+function foldBunX(server: NormalizedMcpServer): NormalizedMcpServer {
+  if (server.command !== 'bun' || server.args?.[0] !== 'x') { return server; }
+  return { ...server, command: 'bunx', args: server.args.slice(1) };
+}
+
+/**
  * What a known server's entry lacks when the ONLY difference from the pinned
  * shape is a launch detail (the loader, a host-side reference, the Codex
  * startup budget), or null when anything else differs too. These details
  * change how a host starts the server, never which server it starts.
  */
 function launchGaps(actual: NormalizedMcpServer, expected: NormalizedMcpServer): string[] | null {
-  if (!sameServer({ ...actual, envLoader: expected.envLoader, hostRefs: expected.hostRefs, startupTimeoutSec: expected.startupTimeoutSec }, expected)) { return null; }
+  if (!sameServer(foldBunX({ ...actual, envLoader: expected.envLoader, hostRefs: expected.hostRefs, startupTimeoutSec: expected.startupTimeoutSec }), foldBunX(expected))) { return null; }
   const gaps: string[] = [];
   const hostRefs = (expected.hostRefs ?? []).length === 0 ? actual.hostRefs ?? [] : [];
   if (expected.envLoader === true && (actual.envLoader !== true || hostRefs.length > 0)) {

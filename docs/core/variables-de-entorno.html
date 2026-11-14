@@ -211,7 +211,7 @@ bun run vars:schema:check      # el core está al día, todo secreto es @sensiti
       </p>
       <pre
         data-lang="bash"
-      ><code>bunx -p varlock@&lt;pin&gt; varlock run --no-redact-stdout --inject vars --filter A,B -- &lt;server&gt;</code></pre>
+      ><code>bunx --no-install varlock run --no-redact-stdout --inject vars --filter A,B -- &lt;server&gt;</code></pre>
       <div class="table-wrap">
         <table>
           <thead>
@@ -242,10 +242,11 @@ bun run vars:schema:check      # el core está al día, todo secreto es @sensiti
               </td>
             </tr>
             <tr>
-              <td><code>bunx -p varlock@&lt;pin&gt;</code></td>
+              <td><code>bunx --no-install varlock</code></td>
               <td>
-                La versión exacta de la devDependency: basta con <code>bun install</code> una vez,
-                sin el binario suelto
+                Corre el <code>varlock</code> que ya está en <code>node_modules</code> (la
+                devDependency exacta), sin instalar nada al arrancar: la versión vive en un solo
+                lugar
               </td>
             </tr>
           </tbody>

@@ -5,7 +5,7 @@
 - **Deciders:** framework owner (boilerplate maintainer): the env-secrets spike plan, unit Q-U4 "MCP hardening", approved with the owner decisions of 2026-10-05 (`.session/decisions/env-secrets-2026-10-05.json`); the conductor's shared launch design for the secrets wave (loader = `bunx -p varlock@<pin> varlock run --no-redact-stdout`). Implemented by Q-U4 (this PR)
 - **Tags:** secrets, mcp, varlock, harness, worktrees
 - **Supersedes:** —
-- **Superseded by:** —
+- **Superseded by:** ADR-0018, for §Decision bullet 1 only (the loader's launch shape: `bunx --no-install varlock` instead of `bunx -p varlock@<pin>`). The one-loader-every-host rule, the `--filter` contract and the retirement of the plaintext copies stand.
 
 ---
 
